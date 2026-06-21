@@ -1,8 +1,8 @@
 # Petal
 
-> The modern, extensible React frontend for Frappe & ERPNext.
+> A modern, extensible React frontend for Frappe — built on Next.js 14.
 
-Petal replaces Frappe Desk with a Next.js 14 shell. It auto-discovers every workspace and DocType from your Frappe backend, ships a full form and list engine out of the box, and lets you layer custom React apps on top through a typed hooks API — the same way Frappe's own app system works, but for the frontend.
+Petal is an open-source alternative to Frappe Desk. It connects to any Frappe  backend, auto-discovers workspaces and DocTypes, and ships a full form and list engine out of the box. Custom React apps plug in through a typed hooks API — adding sidebar items, custom pages, form overrides, and field behaviours without touching the core.
 
 ---
 
@@ -125,6 +125,9 @@ petal start    # http://localhost:3000
 
 ```bash
 pnpm install
+
+# Build the CLI (dist/ is gitignored — must be built after every fresh clone)
+cd packages/cli && pnpm build && cd ../..
 
 # Configure backend + theme (creates petal.config.ts and .env.local)
 # Run from anywhere inside the project — petal walks up to find packages/core
