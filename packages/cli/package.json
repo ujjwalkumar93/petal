@@ -1,5 +1,5 @@
 {
-  "name": "@petal/cli",
+  "name": "@ujjwalkumar93/petal-cli",
   "version": "0.0.1",
   "description": "CLI to scaffold and manage Petal apps",
   "license": "MIT",
