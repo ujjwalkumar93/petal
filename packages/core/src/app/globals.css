@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Default (Green) ─────────────────────────────────────────────────────── */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --primary: 142 76% 36%;
+  --primary-foreground: 355 100% 97%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+  --border: 240 5.9% 90%;
+  --card: 0 0% 100%;
+  --sidebar: 0 0% 98%;
+}
+
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --primary: 142 70% 45%;
+  --primary-foreground: 144 100% 6%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --card: 240 6% 7%;
+  --sidebar: 240 6% 6%;
+}
+
+/* ─── Ocean (Blue) ────────────────────────────────────────────────────────── */
+.theme-ocean {
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+  --primary: 217 91% 50%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 214 32% 95%;
+  --muted-foreground: 215 20% 45%;
+  --accent: 214 32% 94%;
+  --accent-foreground: 222 47% 11%;
+  --border: 214 32% 88%;
+  --card: 0 0% 100%;
+  --sidebar: 214 40% 97%;
+}
+
+.theme-ocean.dark {
+  --background: 222 47% 7%;
+  --foreground: 210 40% 96%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 222 47% 7%;
+  --muted: 222 30% 14%;
+  --muted-foreground: 215 20% 58%;
+  --accent: 222 30% 14%;
+  --accent-foreground: 210 40% 96%;
+  --border: 222 30% 18%;
+  --card: 222 47% 9%;
+  --sidebar: 222 47% 8%;
+}
+
+/* ─── Rose (Pink/Red) — Paid ──────────────────────────────────────────────── */
+.theme-rose {
+  --background: 0 0% 100%;
+  --foreground: 340 10% 8%;
+  --primary: 346 84% 51%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 340 20% 95%;
+  --muted-foreground: 340 10% 45%;
+  --accent: 340 20% 94%;
+  --accent-foreground: 340 10% 8%;
+  --border: 340 20% 88%;
+  --card: 0 0% 100%;
+  --sidebar: 340 30% 98%;
+}
+
+.theme-rose.dark {
+  --background: 340 15% 6%;
+  --foreground: 340 20% 96%;
+  --primary: 346 84% 62%;
+  --primary-foreground: 340 15% 6%;
+  --muted: 340 12% 14%;
+  --muted-foreground: 340 10% 58%;
+  --accent: 340 12% 14%;
+  --accent-foreground: 340 20% 96%;
+  --border: 340 12% 18%;
+  --card: 340 15% 8%;
+  --sidebar: 340 15% 7%;
+}
+
+/* ─── Slate (Neutral) — Paid ──────────────────────────────────────────────── */
+.theme-slate {
+  --background: 0 0% 100%;
+  --foreground: 215 25% 10%;
+  --primary: 215 50% 35%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 215 20% 95%;
+  --muted-foreground: 215 15% 45%;
+  --accent: 215 20% 93%;
+  --accent-foreground: 215 25% 10%;
+  --border: 215 20% 88%;
+  --card: 0 0% 100%;
+  --sidebar: 215 25% 97%;
+}
+
+.theme-slate.dark {
+  --background: 215 28% 7%;
+  --foreground: 215 15% 96%;
+  --primary: 215 60% 55%;
+  --primary-foreground: 215 28% 7%;
+  --muted: 215 20% 14%;
+  --muted-foreground: 215 15% 58%;
+  --accent: 215 20% 14%;
+  --accent-foreground: 215 15% 96%;
+  --border: 215 20% 18%;
+  --card: 215 28% 9%;
+  --sidebar: 215 28% 8%;
+}
+
+/* ─── Base ────────────────────────────────────────────────────────────────── */
+* { border-color: hsl(var(--border)); }
+body { background: hsl(var(--background)); color: hsl(var(--foreground)); }

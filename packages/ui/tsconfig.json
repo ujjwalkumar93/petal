@@ -1,0 +1,7 @@
+{
+  "extends": "@petal/tsconfig/library.json",
+  "compilerOptions": {
+    "jsx": "react-jsx"
+  },
+  "include": ["src"]
+}

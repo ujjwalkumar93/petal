@@ -1,0 +1,4 @@
+{
+  "extends": "@petal/tsconfig/library.json",
+  "include": ["src"]
+}

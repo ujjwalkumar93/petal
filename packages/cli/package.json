@@ -1,0 +1,26 @@
+{
+  "name": "@petal/cli",
+  "version": "0.0.1",
+  "description": "CLI to scaffold and manage Petal apps",
+  "bin": {
+    "petal": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@petal/sdk": "workspace:*",
+    "commander": "^12.1.0",
+    "prompts": "^2.4.2",
+    "picocolors": "^1.0.1"
+  },
+  "devDependencies": {
+    "@petal/tsconfig": "workspace:*",
+    "@types/prompts": "^2.4.9",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.4.5"
+  }
+}

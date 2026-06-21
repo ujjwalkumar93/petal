@@ -1,0 +1,23 @@
+{
+  "extends": "@petal/tsconfig/nextjs.json",
+  "include": [
+    "src",
+    "next.config.ts",
+    ".next/types/**/*.ts"
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@petal/*": [
+        "../*/src"
+      ]
+    },
+    "noEmit": true
+  },
+  "exclude": [
+    "node_modules"
+  ]
+}

@@ -1,0 +1,83 @@
+"use client"
+import { Suspense, lazy, useMemo, useState } from "react"
+import { useParams } from "next/navigation"
+import { usePetalStore } from "@/store/petal-store"
+import Link from "next/link"
+import type { FormSlotComponents } from "@petal/sdk"
+import { GenericForm } from "./GenericForm"
+
+const SlotFallback = () => (
+  <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+    <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+)
+
+function FormSlot({
+  loader,
+  docname,
+}: {
+  loader: NonNullable<FormSlotComponents["before"]>
+  docname: string
+}) {
+  const Comp = useMemo(() => lazy(loader), [loader])
+  return (
+    <Suspense fallback={<SlotFallback />}>
+      <Comp docname={docname} />
+    </Suspense>
+  )
+}
+
+export default function FormPage() {
+  const params  = useParams()
+  const doctype = decodeURIComponent(params.doctype as string)
+  const name    = decodeURIComponent(params.name as string)
+  const { hooks } = usePetalStore()
+  const [isSingle, setIsSingle] = useState(false)
+
+  const override = hooks.form_overrides?.[doctype]
+  const slots    = hooks.form_slots?.[doctype]
+  const OverrideComponent = useMemo(() => (override ? lazy(override) : null), [override])
+
+  return (
+    <div className="max-w-5xl space-y-4 min-w-0">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1.5 text-sm">
+        <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">Home</Link>
+        <span className="text-muted-foreground/30">/</span>
+        {isSingle ? (
+          <span className="text-foreground font-medium truncate">{doctype}</span>
+        ) : (
+          <>
+            <Link href={`/list/${encodeURIComponent(doctype)}`} className="text-muted-foreground hover:text-foreground transition-colors">{doctype}</Link>
+            <span className="text-muted-foreground/30">/</span>
+            <span className="text-foreground font-medium truncate">{name === "new" ? `New ${doctype}` : name}</span>
+          </>
+        )}
+      </div>
+
+      {OverrideComponent ? (
+        <Suspense fallback={
+          <div className="flex items-center gap-2 text-sm text-muted-foreground p-8">
+            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            Loading custom form…
+          </div>
+        }>
+          <OverrideComponent docname={name} />
+        </Suspense>
+      ) : (
+        <>
+          {slots?.before && <FormSlot loader={slots.before} docname={name} />}
+          <GenericForm
+            doctype={doctype}
+            name={name}
+            onIsSingle={setIsSingle}
+            toolbarSlot={slots?.toolbar
+              ? <FormSlot loader={slots.toolbar} docname={name} />
+              : undefined}
+          />
+          {slots?.after && <FormSlot loader={slots.after} docname={name} />}
+        </>
+      )}
+    </div>
+  )
+}

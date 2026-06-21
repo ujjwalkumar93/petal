@@ -1,0 +1,15 @@
+{
+  "name": "petal",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @petal/core dev",
+    "build": "pnpm --filter '@petal/*' build",
+    "lint": "pnpm --filter '@petal/*' lint",
+    "typecheck": "pnpm --filter '@petal/*' typecheck",
+    "clean": "pnpm --filter '@petal/*' clean"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
