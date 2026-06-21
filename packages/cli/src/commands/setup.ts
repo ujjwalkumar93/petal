@@ -2,13 +2,18 @@ import { existsSync, writeFileSync } from "fs"
 import { join } from "path"
 import prompts from "prompts"
 import pc from "picocolors"
+import { findPetalCoreDir } from "../lib/apps-config"
 
 export async function setupPetal(): Promise<void> {
-  const cwd = process.cwd()
-  const configPath  = join(cwd, "petal.config.ts")
-  const envPath     = join(cwd, ".env.local")
-  const composePath = join(cwd, "docker-compose.yml")
-  const appsPath    = join(cwd, "petal.apps.json")
+  const coreDir = findPetalCoreDir()
+  if (!coreDir) {
+    console.error(pc.red("\n  ✖ Could not find a Petal core directory. Run from inside your petal monorepo.\n"))
+    process.exit(1)
+  }
+  const configPath  = join(coreDir, "petal.config.ts")
+  const envPath     = join(coreDir, ".env.local")
+  const composePath = join(coreDir, "docker-compose.yml")
+  const appsPath    = join(coreDir, "petal.apps.json")
 
   const alreadyExists = existsSync(configPath) || existsSync(envPath)
   if (alreadyExists) {
