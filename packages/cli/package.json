@@ -2,9 +2,18 @@
   "name": "@petal/cli",
   "version": "0.0.1",
   "description": "CLI to scaffold and manage Petal apps",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ujjwalkumar93/petal.git",
+    "directory": "packages/cli"
+  },
   "bin": {
     "petal": "./dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
@@ -12,12 +21,12 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@petal/sdk": "workspace:*",
     "commander": "^12.1.0",
     "prompts": "^2.4.2",
     "picocolors": "^1.0.1"
   },
   "devDependencies": {
+    "@petal/sdk": "workspace:*",
     "@petal/tsconfig": "workspace:*",
     "@types/prompts": "^2.4.9",
     "esbuild": "^0.21.5",
