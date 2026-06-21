@@ -112,25 +112,24 @@ petal/
 
 ## Quick Start
 
-### New installation
+### 1. Install the CLI
 
 ```bash
-npx create-petal-app my-petal-host
-cd my-petal-host
-pnpm install
-petal start    # http://localhost:3000
+npm install -g @ujjwalkumar93/petal-cli
 ```
 
-### Inside the monorepo
+### 2. Clone the repo
 
 ```bash
+git clone https://github.com/ujjwalkumar93/petal.git
+cd petal
 pnpm install
+```
 
-# Build the CLI (dist/ is gitignored — must be built after every fresh clone)
-cd packages/cli && pnpm build && cd ../..
+### 3. Configure and start
 
-# Configure backend + theme (creates petal.config.ts and .env.local)
-# Run from anywhere inside the project — petal walks up to find packages/core
+```bash
+# Point Petal at your Frappe backend (creates petal.config.ts and .env.local)
 petal setup
 
 # Start the shell
