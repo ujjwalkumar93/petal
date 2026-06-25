@@ -72,13 +72,10 @@ export function ThemeToggle() {
             {THEMES.map((t) => (
               <button
                 key={t.name}
-                onClick={() => t.tier === "free" ? pickTheme(t.name) : undefined}
-                disabled={t.tier === "paid"}
+                onClick={() => pickTheme(t.name)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                   themeName === t.name
                     ? "bg-primary/10 text-primary font-semibold"
-                    : t.tier === "paid"
-                    ? "opacity-40 cursor-not-allowed text-foreground"
                     : "hover:bg-accent text-foreground"
                 }`}
               >
@@ -88,11 +85,6 @@ export function ThemeToggle() {
                   <span className="w-3 h-3 rounded-full border border-border/50" style={{ background: t.preview[1] }} />
                 </span>
                 <span className="flex-1 text-left">{t.label}</span>
-                {t.tier === "paid" && (
-                  <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
-                    PRO
-                  </span>
-                )}
                 {themeName === t.name && (
                   <span className="text-primary">✓</span>
                 )}
