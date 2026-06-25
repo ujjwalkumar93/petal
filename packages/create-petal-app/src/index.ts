@@ -136,15 +136,8 @@ function writePetalConfig(
   }
 ) {
   const appsBlock = opts.app
-    ? `[
-    {
-      name: "${opts.app.name}",
-      version: "0.0.1",
-      url: "${opts.app.url}",
-      devUrl: "${opts.app.devUrl}",
-    },
-  ]`
-    : "[]"
+    ? `[\n    { name: "${opts.app.name}", version: "0.0.1", url: "${opts.app.url}", devUrl: "${opts.app.devUrl}" },\n  ]`
+    : "[\n    // { name: \"my-app\", version: \"0.0.1\", url: \"https://cdn.example.com/my-app/petal.hooks.js\", devUrl: \"http://localhost:5174/petal.hooks.js\" },\n  ]"
 
   writeFileSync(
     join(dir, "petal.config.ts"),

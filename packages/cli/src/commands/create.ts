@@ -1,8 +1,7 @@
 import { mkdirSync, writeFileSync } from "fs"
-import { join, resolve } from "path"
+import { join } from "path"
 import prompts from "prompts"
 import pc from "picocolors"
-import { findPetalCoreDir, getAppsFilePath, readApps, writeApps } from "../lib/apps-config"
 
 export async function createApp(appName?: string): Promise<void> {
   const answers = await prompts(
@@ -306,33 +305,13 @@ export default hooks
 }
 `)
 
-  // ── Auto-register in petal.apps.json if petal core found ──────────────────
-  const coreDir = findPetalCoreDir(resolve(dir, ".."))
-  if (coreDir) {
-    const appsPath = getAppsFilePath(coreDir)
-    const existing = readApps(appsPath)
-    if (!existing.find((a) => a.name === name)) {
-      existing.push({
-        name,
-        version: "0.0.1",
-        url: `http://localhost:${port}/petal.hooks.js`,
-        devUrl: `http://localhost:${port}/petal.hooks.js`,
-      })
-      writeApps(appsPath, existing)
-      console.log(`  ${pc.green("✓")} Registered in ${pc.dim(appsPath)}`)
-    }
-  }
-
   console.log(`  ${pc.green("✓")} Scaffolded ${pc.cyan(name)}\n`)
   console.log(pc.bold("  Next steps:\n"))
   console.log(`  ${pc.cyan("cd " + name)}`)
   console.log(`  ${pc.cyan("pnpm install")}`)
   console.log(`  ${pc.cyan("petal dev")}           ${pc.dim("# build + watch + serve on :" + port)}`)
   console.log()
-  if (!coreDir) {
-    console.log(pc.dim("  Then register it in petal core:"))
-    console.log(pc.dim("  cd /path/to/petal/packages/core"))
-    console.log(pc.dim(`  petal app add   # name: ${name}, devUrl: http://localhost:${port}/petal.hooks.js`))
-    console.log()
-  }
+  console.log(pc.dim("  Then register it in petal.config.ts:"))
+  console.log(pc.dim(`  { name: "${name}", version: "0.0.1", devUrl: "http://localhost:${port}/petal.hooks.js", url: "https://..." }`))
+  console.log(pc.dim("  Restart petal start after saving.\n"))
 }
