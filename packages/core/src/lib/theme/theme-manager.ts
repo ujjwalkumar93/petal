@@ -10,10 +10,10 @@ export interface ThemeDefinition {
 
 
 export const THEMES: ThemeDefinition[] = [
-  { name: "default", label: "Green",   preview: ["#16a34a", "#ffffff"] },
-  { name: "ocean",   label: "Ocean",   preview: ["#3b82f6", "#eff6ff"] },
-  { name: "rose",    label: "Rose",    preview: ["#f43f5e", "#fff1f2"] },
-  { name: "slate",   label: "Slate",   preview: ["#475569", "#f8fafc"] },
+  { name: "default", label: "Green", preview: ["#16a34a", "#ffffff"] },
+  { name: "ocean",   label: "Ocean", preview: ["#3b82f6", "#eff6ff"] },
+  { name: "rose",    label: "Rose",  preview: ["#f43f5e", "#fff1f2"] },
+  { name: "slate",   label: "Slate", preview: ["#475569", "#f8fafc"] },
 ]
 
 const STORAGE_KEY_MODE  = "petal-theme-mode"

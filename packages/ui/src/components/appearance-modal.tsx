@@ -15,8 +15,6 @@ export interface ThemeDefinition {
   name: string
   /** Human-readable label */
   label: string
-  /** Access tier */
-  tier: "free" | "paid"
   /** Preview swatch colors [primary, background] */
   preview: [string, string]
 }
@@ -91,7 +89,7 @@ export function AppearanceModal({
       const idx = parseInt(e.key) - 1
       if (!isNaN(idx) && idx >= 0 && idx < themes.length) {
         const theme = themes[idx]
-        if (theme && theme.tier === "free") onThemeChange(theme.name)
+        if (theme) onThemeChange(theme.name)
       }
     }
     window.addEventListener("keydown", onKeyDown)
@@ -167,14 +165,11 @@ export function AppearanceModal({
                 return (
                   <button
                     key={t.name}
-                    onClick={() => t.tier === "free" && onThemeChange(t.name)}
-                    disabled={t.tier === "paid"}
+                    onClick={() => onThemeChange(t.name)}
                     className={cn(
                       "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-all",
                       active
                         ? "border-primary bg-primary/10 text-primary"
-                        : t.tier === "paid"
-                        ? "cursor-not-allowed border-border text-foreground opacity-40"
                         : "border-border text-foreground hover:border-primary/40 hover:bg-accent",
                     )}
                   >
@@ -183,19 +178,12 @@ export function AppearanceModal({
                       <span className="h-4 w-4 rounded-full border border-border/50" style={{ background: t.preview[1] }} />
                     </span>
                     <span className="flex-1 text-left font-medium">{t.label}</span>
-                    {t.tier === "paid" && (
-                      <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
-                        PRO
-                      </span>
-                    )}
-                    {t.tier === "free" && (
-                      <span className={cn(
-                        "rounded px-1.5 py-0.5 font-mono text-[10px]",
-                        active ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground",
-                      )}>
-                        {i + 1}
-                      </span>
-                    )}
+                    <span className={cn(
+                      "rounded px-1.5 py-0.5 font-mono text-[10px]",
+                      active ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground",
+                    )}>
+                      {i + 1}
+                    </span>
                     {active && <span className="text-sm text-primary">✓</span>}
                   </button>
                 )
@@ -207,7 +195,7 @@ export function AppearanceModal({
           <div className="border-t border-border bg-muted/30 px-5 py-3">
             <p className="text-center text-xs text-muted-foreground">
               <Kbd>L</Kbd> <Kbd>D</Kbd> <Kbd>S</Kbd> for mode ·{" "}
-              <Kbd>1</Kbd>–<Kbd>{themes.filter((t) => t.tier === "free").length}</Kbd> for palette ·{" "}
+              <Kbd>1</Kbd>–<Kbd>{themes.length}</Kbd> for palette ·{" "}
               <Kbd>Esc</Kbd> to close
             </p>
           </div>
