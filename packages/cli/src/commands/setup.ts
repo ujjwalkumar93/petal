@@ -59,14 +59,13 @@ export async function setupPetal(): Promise<void> {
 
   // ── petal.config.ts ──────────────────────────────────────────────────────
   // Apps are NOT stored here — they go in petal.apps.json (managed by `petal app add`).
-  // This file is gitignored; it only holds backend URL and theme.
+  // This file is gitignored; it only holds theme. Backend URL lives in .env.local.
   const petalConfigContent =
 `import type { PetalConfig } from "@petal/sdk"
 
-// Backend URL and theme only — apps are managed in petal.apps.json
+// Theme only — backend URL is in .env.local, apps are in petal.apps.json
 // Run \`petal app add\` to register custom apps (no rebuild needed).
 const config: PetalConfig = {
-  backend: "${main.backendUrl}",
   apps: [],
   theme: {
     primaryColor: "${main.primaryColor}",
@@ -115,7 +114,7 @@ NEXT_PUBLIC_APP_VERSION=1.0.0
     writeFileSync(appsPath, appsContent)
   }
 
-  console.log(`\n  ${pc.green("✓")} Created ${pc.cyan("petal.config.ts")}   ${pc.dim("(gitignored — backend URL + theme)")}`)
+  console.log(`\n  ${pc.green("✓")} Created ${pc.cyan("petal.config.ts")}   ${pc.dim("(gitignored — theme)")}`)
   console.log(`  ${pc.green("✓")} Created ${pc.cyan(".env.local")}         ${pc.dim("(gitignored — secrets)")}`)
   console.log(`  ${pc.green("✓")} Created ${pc.cyan("docker-compose.yml")}`)
   if (!existsSync(appsPath)) {

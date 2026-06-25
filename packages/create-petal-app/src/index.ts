@@ -21,7 +21,7 @@ function getTemplatePath(): string {
     if (existsSync(p)) return p
   }
   throw new Error(
-    "Petal template not found. Report this at https://github.com/petalframework/petal/issues"
+    "Petal template not found. Report this at https://github.com/ujjwalkumar93/petal/issues"
   )
 }
 
@@ -131,7 +131,6 @@ function rewritePackageJson(dir: string, projectName: string) {
 function writePetalConfig(
   dir: string,
   opts: {
-    backend: string
     primaryColor: string
     app: { name: string; url: string; devUrl: string } | null
   }
@@ -152,7 +151,6 @@ function writePetalConfig(
     `import type { PetalConfig } from "@petal/sdk"
 
 const config: PetalConfig = {
-  backend: "${opts.backend}",
   apps: ${appsBlock},
   theme: {
     primaryColor: "${opts.primaryColor}",
@@ -269,7 +267,7 @@ async function main() {
   rewritePackageJson(dir, projectName)
 
   // Generate petal.config.ts and .env.local from user answers
-  writePetalConfig(dir, { backend: main.backend, primaryColor: main.primaryColor, app })
+  writePetalConfig(dir, { primaryColor: main.primaryColor, app })
   writeEnvLocal(dir, { backend: main.backend, site: main.site })
 
   // Rewrite tsconfig.json to not extend @petal/tsconfig (monorepo-only)
