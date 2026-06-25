@@ -1,9 +1,8 @@
 import { Command } from "commander"
-import { createApp }            from "./commands/create"
-import { devApp }               from "./commands/dev"
-import { setupPetal }           from "./commands/setup"
-import { startPetal }           from "./commands/start"
-import { registerAppCommands } from "./commands/app/index"
+import { createApp }  from "./commands/create"
+import { devApp }     from "./commands/dev"
+import { setupPetal } from "./commands/setup"
+import { startPetal } from "./commands/start"
 
 const program = new Command()
 
@@ -27,15 +26,11 @@ program
   .option("--skip-apps", "Skip starting registered app dev servers")
   .action(startPetal)
 
-// ── App management (run from petal core directory) ────────────────────────────
-
-registerAppCommands(program)
-
 // ── Custom app development (run from the app directory) ───────────────────────
 
 program
   .command("create [app-name]")
-  .description("Scaffold a new Petal custom app and register it automatically")
+  .description("Scaffold a new Petal custom app")
   .action(createApp)
 
 program

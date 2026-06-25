@@ -2,9 +2,24 @@ import { spawn, ChildProcess } from "child_process"
 import { existsSync } from "fs"
 import { join } from "path"
 import pc from "picocolors"
-import { readApps, getAppsFilePath, findPetalCoreDir, findAppDirectory } from "../lib/apps-config"
+import { findPetalCoreDir, findAppDirectory } from "../lib/apps-config"
 import { spawnAppDevProcesses } from "../lib/spawn-app-dev"
-import type { PetalAppMeta } from "@petal/sdk"
+import type { PetalAppMeta, PetalConfig } from "@petal/sdk"
+
+function loadAppsFromConfig(coreDir: string): PetalAppMeta[] {
+  const configPath = join(coreDir, "petal.config.ts")
+  if (!existsSync(configPath)) return []
+  try {
+    const tsxCjs = join(coreDir, "node_modules/tsx/cjs")
+    if (existsSync(tsxCjs)) require(tsxCjs)
+    // Clear module cache so restarts pick up changes
+    Object.keys(require.cache).forEach((k) => { if (k.includes("petal.config")) delete require.cache[k] })
+    const mod = require(configPath) as { default?: PetalConfig }
+    return mod.default?.apps ?? []
+  } catch {
+    return []
+  }
+}
 
 interface StartOptions {
   prod?: boolean
@@ -46,8 +61,7 @@ export async function startPetal(options: StartOptions): Promise<void> {
   const skipApps = options.skipApps || options.prod
 
   if (!skipApps) {
-    const appsJson = getAppsFilePath(coreDir)
-    const apps = readApps(appsJson)
+    const apps = loadAppsFromConfig(coreDir)
 
     if (apps.length > 0) {
       console.log(pc.dim("  Starting app dev servers...\n"))
@@ -85,11 +99,6 @@ export async function startPetal(options: StartOptions): Promise<void> {
       if (appProcesses.length > 0) {
         console.log("")
       }
-    }
-  } else if (!options.prod) {
-    const appsJson = getAppsFilePath(coreDir)
-    if (existsSync(appsJson)) {
-      console.log(pc.dim("  Apps loaded from petal.apps.json (use `petal app add/remove` to manage)\n"))
     }
   }
 

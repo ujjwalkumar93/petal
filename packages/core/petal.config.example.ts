@@ -9,10 +9,6 @@ import type { PetalConfig } from "@petal/sdk"
 
 const config: PetalConfig = {
 
-  // ── Backend ────────────────────────────────────────────────────────────────
-  // URL of your Frappe/ERPNext server.
-  backend: process.env.NEXT_PUBLIC_FRAPPE_URL ?? "http://localhost:8000",
-
   // ── Apps ───────────────────────────────────────────────────────────────────
   // Custom apps built with @petal/sdk. The Frappe workspace sidebar is loaded
   // automatically by Petal core — no entry needed here for it.

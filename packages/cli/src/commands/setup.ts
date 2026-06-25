@@ -13,13 +13,16 @@ export async function setupPetal(): Promise<void> {
   const configPath  = join(coreDir, "petal.config.ts")
   const envPath     = join(coreDir, ".env.local")
   const composePath = join(coreDir, "docker-compose.yml")
-  const appsPath    = join(coreDir, "petal.apps.json")
 
-  const alreadyExists = existsSync(configPath) || existsSync(envPath)
-  if (alreadyExists) {
-    console.log(pc.yellow("\n  ⚠  petal.config.ts or .env.local already exists."))
+  const existingFiles = [
+    existsSync(configPath) && "petal.config.ts",
+    existsSync(envPath)    && ".env.local",
+  ].filter(Boolean) as string[]
+
+  if (existingFiles.length > 0) {
+    console.log(pc.yellow(`\n  ⚠  ${existingFiles.join(" and ")} already exist${existingFiles.length > 1 ? "" : "s"}.`))
     const { overwrite } = await prompts(
-      { type: "confirm", name: "overwrite", message: "Overwrite with new settings?", initial: false },
+      { type: "confirm", name: "overwrite", message: "Overwrite with new settings?", initial: true },
       { onCancel: () => process.exit(0) },
     )
     if (!overwrite) { console.log(pc.dim("  Aborted.\n")); process.exit(0) }
@@ -58,16 +61,15 @@ export async function setupPetal(): Promise<void> {
   )
 
   // ── petal.config.ts ──────────────────────────────────────────────────────
-  // Apps are NOT stored here — they go in petal.apps.json (managed by `petal app add`).
-  // This file is gitignored; it only holds backend URL and theme.
+  // Single source of truth for apps and theme.
+  // Backend URL lives in .env.local (gitignored, never committed).
   const petalConfigContent =
 `import type { PetalConfig } from "@petal/sdk"
 
-// Backend URL and theme only — apps are managed in petal.apps.json
-// Run \`petal app add\` to register custom apps (no rebuild needed).
 const config: PetalConfig = {
-  backend: "${main.backendUrl}",
-  apps: [],
+  apps: [
+    // { name: "my-app", version: "0.0.1", url: "https://cdn.example.com/my-app/petal.hooks.js", devUrl: "http://localhost:5174/petal.hooks.js" },
+  ],
   theme: {
     primaryColor: "${main.primaryColor}",
   },
@@ -98,37 +100,25 @@ NEXT_PUBLIC_APP_VERSION=1.0.0
     env_file:
       - .env.local
     environment:
-      # Override PETAL_APPS here for Docker deployments (no petal.apps.json needed).
-      # Format: JSON array — same schema as petal.apps.json
+      # Set PETAL_APPS here to override petal.config.ts for Docker deployments.
+      # Format: JSON array of PetalAppMeta objects.
       # PETAL_APPS: '[{"name":"my-app","version":"1.0.0","url":"https://cdn.example.com/my-app/petal.hooks.js"}]'
     restart: unless-stopped
 `
 
-  // ── petal.apps.json ───────────────────────────────────────────────────────
-  // Only create if it doesn't exist — preserve any apps already registered.
-  const appsContent = "[\n]\n"
-
   writeFileSync(configPath,  petalConfigContent)
   writeFileSync(envPath,     envContent)
   writeFileSync(composePath, composeContent)
-  if (!existsSync(appsPath)) {
-    writeFileSync(appsPath, appsContent)
-  }
 
-  console.log(`\n  ${pc.green("✓")} Created ${pc.cyan("petal.config.ts")}   ${pc.dim("(gitignored — backend URL + theme)")}`)
-  console.log(`  ${pc.green("✓")} Created ${pc.cyan(".env.local")}         ${pc.dim("(gitignored — secrets)")}`)
-  console.log(`  ${pc.green("✓")} Created ${pc.cyan("docker-compose.yml")}`)
-  if (!existsSync(appsPath)) {
-    console.log(`  ${pc.green("✓")} Created ${pc.cyan("petal.apps.json")}    ${pc.dim("(gitignored — registered apps)")}`)
-  }
+  console.log(`\n  ${pc.green("✓")} Created ${pc.cyan("petal.config.ts")}   ${pc.dim("→ " + configPath)}`)
+  console.log(`  ${pc.green("✓")} Created ${pc.cyan(".env.local")}         ${pc.dim("→ " + envPath)}`)
+  console.log(`  ${pc.green("✓")} Created ${pc.cyan("docker-compose.yml")} ${pc.dim("→ " + composePath)}`)
 
   console.log(`\n  ${pc.bold("Start Petal:")}\n`)
   console.log(`  ${pc.cyan("petal start")}            ${pc.dim("# dev mode on :" + main.petalPort)}`)
   console.log(`  ${pc.cyan("petal start --prod")}     ${pc.dim("# production mode (after petal build)")}`)
 
   console.log(`\n  ${pc.bold("Register custom apps:")}\n`)
-  console.log(`  ${pc.cyan("petal create my-app")}    ${pc.dim("# scaffold + auto-register")}`)
-  console.log(`  ${pc.cyan("petal app list")}         ${pc.dim("# show registered apps")}`)
-  console.log(`  ${pc.cyan("petal app add")}          ${pc.dim("# register an existing app")}`)
-  console.log()
+  console.log(`  ${pc.cyan("petal create my-app")}    ${pc.dim("# scaffold a new app")}`)
+  console.log(pc.dim(`  Then add it to the apps[] array in petal.config.ts and restart.\n`))
 }

@@ -1,23 +1,11 @@
-import { existsSync, readFileSync } from "fs"
-import { join } from "path"
 import type { PetalConfig } from "@petal/sdk"
 
 export function getRuntimeConfig(): PetalConfig {
   let apps: PetalConfig["apps"] = []
 
-  // Priority 1: petal.apps.json — file-based, no Next.js rebuild needed.
-  // Managed by `petal app add/remove/update`. Ignored by git.
-  const appsJsonPath = join(process.cwd(), "petal.apps.json")
-  if (existsSync(appsJsonPath)) {
-    try {
-      apps = JSON.parse(readFileSync(appsJsonPath, "utf-8"))
-    } catch {
-      console.error("[Petal] Invalid petal.apps.json — expected a JSON array. Falling back to env.")
-    }
-  }
-  // Priority 2: PETAL_APPS env var — set externally (Docker / CI) when no file is on disk.
-  // In local dev this is also set by withPetal() at build time, but the file takes precedence.
-  else if (process.env.PETAL_APPS) {
+  // Apps come from petal.config.ts → withPetal() bakes them into PETAL_APPS at startup.
+  // For Docker/CI: set PETAL_APPS env var directly in your deployment config.
+  if (process.env.PETAL_APPS) {
     try {
       apps = JSON.parse(process.env.PETAL_APPS)
     } catch {
