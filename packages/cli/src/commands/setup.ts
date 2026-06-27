@@ -46,12 +46,6 @@ export async function setupPetal(): Promise<void> {
       },
       {
         type: "text",
-        name: "primaryColor",
-        message: "Primary brand color (hex)",
-        initial: "#16a34a",
-      },
-      {
-        type: "text",
         name: "petalPort",
         message: "Port to run Petal on",
         initial: "3000",
@@ -70,9 +64,6 @@ const config: PetalConfig = {
   apps: [
     // { name: "my-app", version: "0.0.1", url: "https://cdn.example.com/my-app/petal.hooks.js", devUrl: "http://localhost:5174/petal.hooks.js" },
   ],
-  theme: {
-    primaryColor: "${main.primaryColor}",
-  },
 }
 
 export default config
@@ -115,5 +106,6 @@ NEXT_PUBLIC_APP_VERSION=1.0.0
 
   console.log(`\n  ${pc.bold("Register custom apps:")}\n`)
   console.log(`  ${pc.cyan("petal create my-app")}    ${pc.dim("# scaffold a new app")}`)
-  console.log(pc.dim(`  Then add it to the apps[] array in petal.config.ts and restart.\n`))
+  console.log(`  ${pc.cyan("petal app add")}          ${pc.dim("# register an existing app bundle")}`)
+  console.log(pc.dim("  Restart petal start after registering apps.\n"))
 }
