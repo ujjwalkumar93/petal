@@ -1,22 +1,18 @@
 import fs from "fs"
 import path from "path"
-import type { PetalConfig, PetalAppMeta } from "@petal/sdk"
+import type { PetalConfig } from "@petal/sdk"
 import type { NextConfig } from "next"
 
 export function withPetal(petalConfig: PetalConfig) {
   const dir = path.join(process.cwd(), ".petal")
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
 
-  // petal.apps.json (CLI-managed) takes priority over petal.config.ts apps
-  const appsJsonPath = path.join(process.cwd(), "petal.apps.json")
-  const apps: PetalAppMeta[] = fs.existsSync(appsJsonPath)
-    ? (JSON.parse(fs.readFileSync(appsJsonPath, "utf8")) as PetalAppMeta[])
-    : (petalConfig.apps ?? [])
-
+  // Write only the static config from petal.config.ts.
+  // petal.apps.json (CLI-managed) is read at request time by runtime-config.ts — no restart needed.
   fs.writeFileSync(
     path.join(dir, "config.json"),
     JSON.stringify({
-      apps,
+      apps: petalConfig.apps ?? [],
       ...(petalConfig.pathMap ? { pathMap: petalConfig.pathMap } : {}),
     }),
   )

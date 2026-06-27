@@ -1,30 +1,49 @@
 import fs from "fs"
 import path from "path"
-import type { PetalConfig } from "@petal/sdk"
+import type { PetalConfig, PetalAppMeta } from "@petal/sdk"
 
 type StoredConfig = {
   apps: NonNullable<PetalConfig["apps"]>
   pathMap?: PetalConfig["pathMap"]
 }
 
-let _cached: StoredConfig | null = null
+let _staticCached: StoredConfig | null = null
 
-function loadStoredConfig(): StoredConfig {
-  if (_cached) return _cached
+function loadStaticConfig(): StoredConfig {
+  if (_staticCached) return _staticCached
   try {
     const raw = fs.readFileSync(path.join(process.cwd(), ".petal/config.json"), "utf8")
-    _cached = JSON.parse(raw) as StoredConfig
-    return _cached
+    _staticCached = JSON.parse(raw) as StoredConfig
+    return _staticCached
   } catch {
     console.error("[Petal] .petal/config.json not found — did you call withPetal() in next.config.js?")
     return { apps: [] }
   }
 }
 
+// Read petal.apps.json fresh on every call — no cache — so CLI changes are picked up without restart.
+function loadAppsJson(): PetalAppMeta[] | null {
+  const appsJsonPath = path.join(process.cwd(), "petal.apps.json")
+  if (!fs.existsSync(appsJsonPath)) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(fs.readFileSync(appsJsonPath, "utf8"))
+  } catch {
+    console.error("[Petal] petal.apps.json contains invalid JSON — ignoring and falling back to petal.config.ts apps")
+    return null
+  }
+  if (!Array.isArray(parsed)) {
+    console.error("[Petal] petal.apps.json must be a JSON array — ignoring and falling back to petal.config.ts apps")
+    return null
+  }
+  return parsed as PetalAppMeta[]
+}
+
 export function getRuntimeConfig(): PetalConfig {
-  const { apps, pathMap } = loadStoredConfig()
+  const { apps: staticApps, pathMap } = loadStaticConfig()
+  const dynamicApps = loadAppsJson()
   return {
-    apps,
+    apps: dynamicApps ?? staticApps,
     ...(pathMap ? { pathMap } : {}),
   }
 }

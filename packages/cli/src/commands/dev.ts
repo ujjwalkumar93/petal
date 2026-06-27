@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "fs"
 import { join } from "path"
 import pc from "picocolors"
-import { resolveAppDevPort, spawnAppDevProcesses } from "../lib/spawn-app-dev"
+import { resolveAppDevPort, runInitialBuild, spawnAppDevProcesses } from "../lib/spawn-app-dev"
 
 interface DevOptions {
   port?: string
@@ -33,7 +33,15 @@ export async function devApp(options: DevOptions = {}): Promise<void> {
     `\n  ${pc.bold(pc.green("◆"))} ${pc.bold("petal dev")} ${pc.dim("—")} ` +
     `${pc.cyan(appName)} ${pc.dim("→ http://localhost:" + port + "/petal.hooks.js")}\n`,
   )
-  console.log(pc.dim(`  Watching for changes. Shell at ${shellUrl} reloads automatically after each rebuild.\n`))
+
+  console.log(pc.dim("  Building initial bundle...\n"))
+  const built = runInitialBuild(cwd)
+  if (!built) {
+    console.error(pc.red("\n  ✗ Initial build failed. Fix the errors above and re-run petal dev.\n"))
+    process.exit(1)
+  }
+
+  console.log(pc.dim(`\n  Watching for changes. Shell at ${shellUrl} reloads automatically after each rebuild.\n`))
 
   const processes = spawnAppDevProcesses(cwd, { port, appName, pipeOutput: true, shellUrl })
   if (!processes) {

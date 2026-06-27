@@ -1,9 +1,9 @@
-import type { PetalConfig, PetalHooks } from "@petal/sdk"
+import type { PetalAppMeta, PetalConfig, PetalHooks } from "@petal/sdk"
 
 const isDev = process.env.NODE_ENV === "development"
 
 interface RegisteredApp {
-  meta: PetalConfig["apps"][number]
+  meta: PetalAppMeta
   hooks: PetalHooks
 }
 
@@ -12,11 +12,12 @@ class AppRegistry {
   private failedApps: Map<string, string> = new Map() // name → error message
 
   async loadFromConfig(config: PetalConfig): Promise<void> {
+    const apps = config.apps ?? []
     const results = await Promise.allSettled(
-      config.apps.map((app) => this.loadApp(app))
+      apps.map((app) => this.loadApp(app))
     )
     results.forEach((result, i) => {
-      const app = config.apps[i]
+      const app = apps[i]
       if (result.status === "rejected") {
         const msg = result.reason instanceof Error ? result.reason.message : String(result.reason)
         this.failedApps.set(app!.name, msg)
@@ -25,7 +26,7 @@ class AppRegistry {
     })
   }
 
-  private async loadApp(meta: PetalConfig["apps"][number]): Promise<void> {
+  private async loadApp(meta: PetalAppMeta): Promise<void> {
     let hooks: PetalHooks
 
     if (meta._hooks) {
