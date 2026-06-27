@@ -64,7 +64,7 @@ export async function fetchFrappeSidebarItems(): Promise<SidebarItem[]> {
   if (cached) return cached
 
   try {
-    const base = typeof window !== "undefined" ? "/api/v1" : (process.env.NEXT_PUBLIC_FRAPPE_URL ?? "http://localhost:8000")
+    const base = typeof window !== "undefined" ? "/api/v1" : (process.env.FRAPPE_BACKEND_URL ?? "http://localhost:8000")
     const url = buildFrappeUrl(base, FRAPPE_API_ENDPOINTS.WORKSPACE.GET_SIDEBAR_ITEMS)
 
     const response = await fetch(url, {

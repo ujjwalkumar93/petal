@@ -29,9 +29,10 @@ export function PetalProvider({ children }: { children: React.ReactNode }) {
     async function init() {
       registerBuiltinIcons()
 
-      const config = await fetch("/api/config").then((r) => r.json())
+      const config: import("@petal/sdk").PetalConfig = await fetch("/api/config").then((r) => r.json())
 
       await appRegistry.loadFromConfig(config)
+      console.log("[Petal] Loaded apps:", (config.apps ?? []).map((a) => a.name))
 
 
       const mergedTheme = appRegistry.getMergedTheme()
