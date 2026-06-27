@@ -3,6 +3,7 @@ import { createApp }  from "./commands/create"
 import { devApp }     from "./commands/dev"
 import { setupPetal } from "./commands/setup"
 import { startPetal } from "./commands/start"
+import { listApps, addApp, updateApp, removeApp } from "./commands/app"
 
 const program = new Command()
 
@@ -39,5 +40,14 @@ program
   .option("-p, --port <port>", "Port to serve the bundle on (auto-detected from vite.config.ts)")
   .option("--shell <url>", "Petal shell URL to reload after each rebuild", "http://localhost:3000")
   .action(devApp)
+
+// ── App registry (petal.apps.json) ───────────────────────────────────────────
+
+const app = program.command("app").description("Manage registered custom apps (petal.apps.json)")
+
+app.command("list").description("List all registered apps").action(listApps)
+app.command("add").description("Register a new app").action(addApp)
+app.command("update <name>").description("Update version or URLs for a registered app").action(updateApp)
+app.command("remove <name>").description("Unregister an app").action(removeApp)
 
 program.parse()
