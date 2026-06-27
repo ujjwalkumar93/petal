@@ -235,7 +235,7 @@ petal dev
   [serve] Local: http://localhost:5174/
 ```
 
-`petal dev` runs `vite build --watch` and `vite preview --host` in parallel. The preview server has `cors: true` so the Petal shell on port 3000 can import the bundle cross-origin.
+`petal dev` runs an initial `vite build` first, then starts `vite build --watch` and `vite preview --host` in parallel. The preview server has `cors: true` so the Petal shell on port 3000 can import the bundle cross-origin.
 
 ### Step 3 — register (if not auto-registered)
 
@@ -562,18 +562,18 @@ petal start --prod           # production mode (next start)
 petal start --prod -p 4000
 ```
 
-Requires `pnpm install` to have been run. **Reads `petal.config.ts` at startup** — restart after editing it.
+Requires `pnpm install` to have been run. **Reads `petal.config.ts` at startup** — restart after editing it. Apps registered via `petal app add` (`petal.apps.json`) are picked up automatically without a restart.
 
 ---
 
 ### `petal app list`
 
-Show all apps registered in `petal.config.ts`.
+Show all apps registered in `petal.apps.json`.
 
 ```bash
 petal app list
 
-  Registered apps (petal.config.ts)
+  Registered apps (/path/to/petal/packages/core/petal.apps.json)
 
   ● billing-fe v1.0.0
       dev:  http://localhost:5175/petal.hooks.js
@@ -584,7 +584,7 @@ petal app list
 
 ### `petal app add`
 
-Interactive prompt — registers a new app in `petal.config.ts`. Requires `petal start` restart to take effect.
+Interactive prompt — registers a new app in `petal.apps.json`. Changes are picked up on the next request — no `petal start` restart needed.
 
 ```bash
 petal app add
@@ -637,7 +637,7 @@ If petal core is found in a parent directory (up to 10 levels), the app is autom
 
 ### `petal dev`
 
-Run from inside a custom app directory. Starts `vite build --watch` and `vite preview` in parallel.
+Run from inside a custom app directory. Does an initial blocking `vite build` first (so the preview server has something to serve), then starts `vite build --watch` and `vite preview` in parallel.
 
 ```bash
 petal dev                       # port auto-detected from vite.config.ts preview.port
@@ -655,7 +655,7 @@ After each Vite rebuild, the CLI automatically pings `POST <shell-url>/__petal_h
 
 ### Docker / CI
 
-Apps are defined in `petal.config.ts` and baked into `.petal/config.json` at build time by `withPetal()`. The only env var you need to set at runtime is the backend URL:
+Apps defined in `petal.config.ts` are baked into `.petal/config.json` at startup by `withPetal()`. Apps registered via `petal app add` (`petal.apps.json`) are read at request time — no restart needed when they change. The only env var required is the backend URL:
 
 ```env
 FRAPPE_BACKEND_URL=http://frappe:8000
