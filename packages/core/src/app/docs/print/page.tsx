@@ -178,8 +178,6 @@ export default function PrintDocsPage() {
 import myAppHooks from "./src/apps/my-app/hooks"
 
 const config: PetalConfig = {
-  backend: process.env.FRAPPE_BACKEND_URL ?? "http://localhost:8000",
-
   apps: [
     // --- Local app (imported directly) ---
     {
@@ -196,20 +194,15 @@ const config: PetalConfig = {
       url: "https://cdn.example.com/remote-app/petal.hooks.js",
     },
   ],
-
-  theme: {
-    primaryColor: "#16a34a",
-  },
 }
 
 export default config`}</pre>
           <div className="mt-4 space-y-2">
             {[
-              ["backend", "Frappe base URL. Used server-side; the proxy hides it from the browser."],
               ["apps[].name", "Unique app identifier. Used for logging and registry lookup."],
               ["apps[].url", "Remote ESM URL. Used when _hooks is absent. Must export default PetalHooks."],
               ["apps[]._hooks", "Direct hooks import for local apps. Skips the dynamic import step."],
-              ["theme", "Optional global theme override applied before app-level themes."],
+              ["pathMap", "Override proxy path translation. Keys are neutral paths, values are Frappe paths."],
             ].map(([key, desc]) => (
               <div key={key as string} className="grid grid-cols-3 gap-3 text-xs">
                 <code className="bg-muted px-2 py-1 rounded font-mono">{key}</code>

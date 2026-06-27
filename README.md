@@ -21,9 +21,8 @@ Petal is an open-source alternative to Frappe Desk. It connects to any Frappe  b
 11. [Frappe Client API](#frappe-client-api)
 12. [Proxy API Reference](#proxy-api-reference)
 13. [Auth Configuration](#auth-configuration)
-14. [Theme Configuration](#theme-configuration)
-15. [CORS & Frappe Backend Setup](#cors--frappe-backend-setup)
-16. [Troubleshooting](#troubleshooting)
+14. [CORS & Frappe Backend Setup](#cors--frappe-backend-setup)
+15. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -37,7 +36,7 @@ Petal is an open-source alternative to Frappe Desk. It connects to any Frappe  b
 │  │  @petal/core  (Next.js 14 App Router)                   │  │
 │  │  ├─ Shell: Sidebar, Navbar, Auth guard                  │  │
 │  │  ├─ Built-in: /list, /form, /report, /workspace, …     │  │
-│  │  └─ petal.config.ts  ←  backend URL + apps + theme     │  │
+│  │  └─ petal.config.ts  ←  apps + pathMap                 │  │
 │  └───────────────────────┬─────────────────────────────────┘  │
 │                          │  dynamic import(url)  [ESM]        │
 │        ┌─────────────────┼─────────────────────┐             │
@@ -74,8 +73,7 @@ petal/
 │   │   │   ├── components/    # Shell UI (Sidebar, Navbar, ErrorBoundary)
 │   │   │   ├── lib/           # FrappeClient, app registry, runtime config
 │   │   │   └── store/         # Zustand global store
-│   │   ├── petal.config.ts    # Backend URL + apps + theme (gitignored — primary config)
-│   │   └── petal.apps.json    # Optional runtime override (gitignored — overrides env var)
+│   │   ├── petal.config.ts    # apps + pathMap (primary config)
 │   │
 │   ├── sdk/                   # TypeScript types — imported by custom apps
 │   │   └── src/types/
@@ -106,7 +104,7 @@ petal/
 |---|---|
 | Node.js | 18 or 20 |
 | pnpm | 8+ |
-| Frappe | v14 or v15 |
+| Frappe | v15 |
 
 ---
 
@@ -134,34 +132,26 @@ petal start          # http://localhost:3000
 
 ## Configuration
 
-### `petal.config.ts` — primary config (gitignored)
+### `petal.config.ts` — primary config
 
-This is the single source of truth for the Petal shell. `next.config.js` reads it at startup via `withPetal()`, which bakes the `apps` array, backend URL, and theme into Next.js environment variables.
+This is the single source of truth for apps. `next.config.js` reads it at startup via `withPetal()`, which writes the apps array to `.petal/config.json`. The `/api/config` route reads that file on every request.
 
 ```ts
 import type { PetalConfig } from "@petal/sdk"
 
 const config: PetalConfig = {
-  backend: "http://localhost:8000",
   apps: [
     {
       name: "billing-fe",
       version: "0.1.0",
       url: "https://cdn.example.com/billing-fe/petal.hooks.js",
       devUrl: "http://localhost:5175/petal.hooks.js",
-      // Optional: add a Tailwind prefix to prevent CSS class collisions
       // tailwindPrefix: "billing-",
     },
   ],
-  theme: {
-    primaryColor: "#16a34a",
-    borderRadius: "0.5rem",
-    fontFamily: "'Inter', sans-serif",
-  },
   // Optional: override or extend the proxy's path translation table
   // pathMap: {
   //   "auth/csrf": "api/method/my_app.api.get_csrf_token",
-  //   "notifications/list": "api/method/my_app.api.notifications",
   // },
 }
 
@@ -170,33 +160,7 @@ export default config
 
 In development (`NODE_ENV=development`) the shell loads `devUrl`. In production it loads `url`.
 
-Generate it interactively with `petal setup`. It is gitignored so each developer / deployment has its own copy. **Restart `petal start` after editing this file** — the values are baked in at startup, not read per-request.
-
-### `petal.apps.json` — optional runtime override (gitignored)
-
-When this file exists in `packages/core/`, it takes priority over `PETAL_APPS` (the env var set from `petal.config.ts`) and is read per-request — **no server restart or rebuild needed**. Use it when you want to hot-swap app registrations without restarting Next.js.
-
-```json
-[
-  {
-    "name": "billing-fe",
-    "version": "1.0.0",
-    "url": "https://cdn.example.com/billing-fe/petal.hooks.js",
-    "devUrl": "http://localhost:5175/petal.hooks.js"
-  }
-]
-```
-
-If this file is absent, the shell falls back to `PETAL_APPS` from `petal.config.ts`. **Most setups should not need this file** — just use `petal.config.ts`.
-
-Manage it with the CLI (never edit by hand):
-
-```bash
-petal app add             # interactive — register a new app
-petal app list            # show all registered apps
-petal app update foo      # update version or URL
-petal app remove foo      # unregister
-```
+**Restart `petal start` after editing this file** — the values are baked in at startup.
 
 ### `.env.local`
 
@@ -289,15 +253,6 @@ apps: [
 ```
 
 Restart `petal start` — the value is baked in at startup.
-
-Alternatively, register via `petal.apps.json` for a no-restart hot-swap:
-
-```bash
-cd /path/to/petal/packages/core
-petal app add
-```
-
-Then refresh the browser.
 
 ### Step 4 — edit your hooks
 
@@ -613,12 +568,12 @@ Requires `pnpm install` to have been run. **Reads `petal.config.ts` at startup**
 
 ### `petal app list`
 
-Show all apps registered in `petal.apps.json` (or `petal.config.ts` as fallback).
+Show all apps registered in `petal.config.ts`.
 
 ```bash
 petal app list
 
-  Registered apps (…/petal.apps.json)
+  Registered apps (petal.config.ts)
 
   ● billing-fe v1.0.0
       dev:  http://localhost:5175/petal.hooks.js
@@ -629,7 +584,7 @@ petal app list
 
 ### `petal app add`
 
-Interactive prompt — registers a new app in `petal.apps.json`. Browser refresh only; no server restart needed.
+Interactive prompt — registers a new app in `petal.config.ts`. Requires `petal start` restart to take effect.
 
 ```bash
 petal app add
@@ -916,19 +871,9 @@ interface FrappeUser {
 
 ---
 
-## Theme Configuration
+## Theme
 
-### Global theme (`petal.config.ts`)
-
-```ts
-theme: {
-  primaryColor: "#16a34a",
-  borderRadius: "0.5rem",
-  fontFamily:   "'Inter', sans-serif",
-},
-```
-
-### Per-app theme patch (`petal.hooks.ts`)
+Theme is controlled per-app via `overrides.theme` in your `petal.hooks.ts`:
 
 ```ts
 overrides: {
@@ -980,7 +925,6 @@ Then override the `auth/csrf` proxy path in `petal.config.ts` — no file edits 
 
 ```ts
 const config: PetalConfig = {
-  backend: "http://localhost:8000",
   apps: [...],
   pathMap: {
     "auth/csrf": "api/method/my_app.api.get_csrf_token",
@@ -1037,7 +981,7 @@ Successful boot in browser console:
 | Workspace page shows "Workspace unavailable" | POST to `get_desktop_page` failing with CSRF 400 | Add `"ignore_csrf": 1` to `site_config.json` (dev) or expose a CSRF endpoint (prod) |
 | POST requests return HTTP 400 | CSRF token missing or invalid | Check `initCSRF()` is wired, or add `"ignore_csrf": 1` to `site_config.json` |
 | Edited `petal.config.ts` but changes not taking effect | Config is baked at startup | Restart `petal start` after editing `petal.config.ts` |
-| App still loads after removing from `petal.config.ts` | `petal.apps.json` override file takes priority | Delete `petal.apps.json` or remove the entry from it |
+| App still loads after removing from `petal.config.ts` | Old `.petal/config.json` cached from previous startup | Restart `petal start` to regenerate `.petal/config.json` |
 
 ---
 
