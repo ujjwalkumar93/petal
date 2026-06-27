@@ -27,7 +27,7 @@ export default function SettingsPage() {
         <div>
           <label className="text-sm font-medium text-muted-foreground">Backend URL</label>
           <p className="mt-1 text-sm font-mono bg-muted px-3 py-2 rounded-md">
-            {process.env.NEXT_PUBLIC_FRAPPE_URL || "http://localhost:8000"}
+            {process.env.NEXT_PUBLIC_FRAPPE_BACKEND_URL || "http://localhost:8000"}
           </p>
         </div>
         <div>

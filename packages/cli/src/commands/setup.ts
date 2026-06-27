@@ -81,8 +81,7 @@ export default config
   // ── .env.local ────────────────────────────────────────────────────────────
   const envContent =
 `# Frappe Backend — server-side only, never sent to the browser
-FRAPPE_INTERNAL_URL=${main.backendUrl}
-NEXT_PUBLIC_FRAPPE_SITE=${main.site}
+FRAPPE_BACKEND_URL=${main.backendUrl}
 
 # Frontend
 NEXT_PUBLIC_FRONTEND_URL=http://localhost:${main.petalPort}
@@ -99,10 +98,6 @@ NEXT_PUBLIC_APP_VERSION=1.0.0
       - "${main.petalPort}:3000"
     env_file:
       - .env.local
-    environment:
-      # Set PETAL_APPS here to override petal.config.ts for Docker deployments.
-      # Format: JSON array of PetalAppMeta objects.
-      # PETAL_APPS: '[{"name":"my-app","version":"1.0.0","url":"https://cdn.example.com/my-app/petal.hooks.js"}]'
     restart: unless-stopped
 `
 

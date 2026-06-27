@@ -1,44 +1,33 @@
+import fs from "fs"
+import path from "path"
 import type { PetalConfig } from "@petal/sdk"
 
+type StoredConfig = {
+  apps: NonNullable<PetalConfig["apps"]>
+  theme?: PetalConfig["theme"]
+  pathMap?: PetalConfig["pathMap"]
+}
+
+let _cached: StoredConfig | null = null
+
+function loadStoredConfig(): StoredConfig {
+  if (_cached) return _cached
+  try {
+    const raw = fs.readFileSync(path.join(process.cwd(), ".petal/config.json"), "utf8")
+    _cached = JSON.parse(raw) as StoredConfig
+    return _cached
+  } catch {
+    console.error("[Petal] .petal/config.json not found — did you call withPetal() in next.config.js?")
+    return { apps: [] }
+  }
+}
+
 export function getRuntimeConfig(): PetalConfig {
-  let apps: PetalConfig["apps"] = []
-
-  // Apps come from petal.config.ts → withPetal() bakes them into PETAL_APPS at startup.
-  // For Docker/CI: set PETAL_APPS env var directly in your deployment config.
-  if (process.env.PETAL_APPS) {
-    try {
-      apps = JSON.parse(process.env.PETAL_APPS)
-    } catch {
-      console.error("[Petal] Invalid PETAL_APPS — expected a JSON array")
-    }
-  }
-
-  let theme: PetalConfig["theme"] = {}
-  if (process.env.PETAL_THEME) {
-    try {
-      theme = JSON.parse(process.env.PETAL_THEME)
-    } catch {
-      console.error("[Petal] Invalid PETAL_THEME — expected a JSON object")
-    }
-  }
-
-  let pathMap: PetalConfig["pathMap"] = undefined
-  if (process.env.PETAL_PATH_MAP) {
-    try {
-      pathMap = JSON.parse(process.env.PETAL_PATH_MAP)
-    } catch {
-      console.error("[Petal] Invalid PETAL_PATH_MAP — expected a JSON object")
-    }
-  }
-
+  const { apps, theme, pathMap } = loadStoredConfig()
   return {
-    backend:
-      process.env.FRAPPE_INTERNAL_URL ??
-      process.env.FRAPPE_URL ??
-      process.env.NEXT_PUBLIC_FRAPPE_URL ??
-      "http://localhost:8000",
+    backend: process.env.FRAPPE_BACKEND_URL ?? "http://localhost:8000",
     apps,
-    theme: theme ?? {},
+    ...(theme ? { theme } : {}),
     ...(pathMap ? { pathMap } : {}),
-  } as PetalConfig
+  }
 }

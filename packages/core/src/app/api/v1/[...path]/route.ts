@@ -1,16 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getRuntimeConfig } from "@/lib/config/runtime-config"
 
-const FRAPPE_URL = (
-  process.env.FRAPPE_INTERNAL_URL ??
-  process.env.FRAPPE_URL ??
-  process.env.NEXT_PUBLIC_FRAPPE_URL ??
-  "http://localhost:8000"
-).replace(/\/$/, "")
-
-const FRAPPE_SITE_HOST =
-  process.env.NEXT_PUBLIC_FRAPPE_SITE ??
-  new URL(FRAPPE_URL).hostname
+const FRAPPE_URL = (process.env.FRAPPE_BACKEND_URL ?? "http://localhost:8000").replace(/\/$/, "")
+const FRAPPE_SITE_HOST = new URL(FRAPPE_URL).hostname
 
 function getBackend(_req: NextRequest): { frappeUrl: string; frappeSiteHost: string } {
   return { frappeUrl: FRAPPE_URL, frappeSiteHost: FRAPPE_SITE_HOST }

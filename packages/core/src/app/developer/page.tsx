@@ -44,7 +44,7 @@ export default function DeveloperPage() {
               <p className="text-sm text-muted-foreground">Configure your applications</p>
             </a>
             <a
-              href={process.env.NEXT_PUBLIC_FRAPPE_URL}
+              href={process.env.NEXT_PUBLIC_FRAPPE_BACKEND_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="block p-3 bg-accent/5 rounded hover:bg-accent/10 transition-colors"
