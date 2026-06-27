@@ -4,7 +4,6 @@ import type { PetalConfig } from "@petal/sdk"
 
 type StoredConfig = {
   apps: NonNullable<PetalConfig["apps"]>
-  theme?: PetalConfig["theme"]
   pathMap?: PetalConfig["pathMap"]
 }
 
@@ -23,11 +22,9 @@ function loadStoredConfig(): StoredConfig {
 }
 
 export function getRuntimeConfig(): PetalConfig {
-  const { apps, theme, pathMap } = loadStoredConfig()
+  const { apps, pathMap } = loadStoredConfig()
   return {
-    backend: process.env.FRAPPE_BACKEND_URL ?? "http://localhost:8000",
     apps,
-    ...(theme ? { theme } : {}),
     ...(pathMap ? { pathMap } : {}),
   }
 }

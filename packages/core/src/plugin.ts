@@ -10,12 +10,11 @@ export function withPetal(petalConfig: PetalConfig) {
     path.join(dir, "config.json"),
     JSON.stringify({
       apps: petalConfig.apps ?? [],
-      ...(petalConfig.theme ? { theme: petalConfig.theme } : {}),
       ...(petalConfig.pathMap ? { pathMap: petalConfig.pathMap } : {}),
     }),
   )
 
-  const backendUrl = process.env.FRAPPE_BACKEND_URL ?? petalConfig.backend ?? "http://localhost:8000"
+  const backendUrl = process.env.FRAPPE_BACKEND_URL ?? "http://localhost:8000"
 
   return (nextConfig: NextConfig = {}): NextConfig => ({
     ...nextConfig,
