@@ -1,4 +1,4 @@
-import { spawn, ChildProcess } from "child_process"
+import { spawn, spawnSync, ChildProcess } from "child_process"
 import { existsSync, readFileSync } from "fs"
 import { join } from "path"
 import { request as httpRequest } from "http"
@@ -42,6 +42,13 @@ function pingHmr(shellUrl: string): void {
     req.on("error", () => {}) // shell might not be running — silently ignore
     req.end()
   } catch {}
+}
+
+export function runInitialBuild(appDir: string): boolean {
+  const viteBin = join(appDir, "node_modules", ".bin", "vite")
+  if (!existsSync(viteBin)) return false
+  const result = spawnSync(viteBin, ["build"], { cwd: appDir, stdio: "inherit" })
+  return result.status === 0
 }
 
 export function spawnAppDevProcesses(

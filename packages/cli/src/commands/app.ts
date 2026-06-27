@@ -10,11 +10,18 @@ const APPS_FILE = "petal.apps.json"
 function readApps(coreDir: string): PetalAppMeta[] {
   const filePath = join(coreDir, APPS_FILE)
   if (!existsSync(filePath)) return []
+  let parsed: unknown
   try {
-    return JSON.parse(readFileSync(filePath, "utf8")) as PetalAppMeta[]
+    parsed = JSON.parse(readFileSync(filePath, "utf8"))
   } catch {
-    return []
+    console.error(pc.red(`\n  ✖ ${APPS_FILE} contains invalid JSON. Fix it manually before continuing.\n`))
+    process.exit(1)
   }
+  if (!Array.isArray(parsed)) {
+    console.error(pc.red(`\n  ✖ ${APPS_FILE} must be a JSON array. Fix it manually before continuing.\n`))
+    process.exit(1)
+  }
+  return parsed as PetalAppMeta[]
 }
 
 function writeApps(coreDir: string, apps: PetalAppMeta[]): void {

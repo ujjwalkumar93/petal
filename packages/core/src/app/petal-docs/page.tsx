@@ -274,16 +274,13 @@ export default config`} />
 
             <h3 className="font-semibold text-foreground mt-8 mb-3">Registering a custom app</h3>
             <p className="text-sm text-muted-foreground mb-3">
-              Once a custom app is built and deployed to a CDN, add it to the <Mono>apps</Mono> array and restart the host (or rebuild for source deployments):
+              Once a custom app is built and deployed to a CDN, register it with the CLI. Changes are picked up on the next request — no restart needed:
             </p>
-            <CodeBlock label="petal.config.ts" code={`apps: [
-  {
-    name: "hr-portal",
-    version: "2.1.0",
-    url: "https://cdn.mycompany.com/hr-portal/2.1.0/petal.hooks.js",
-    devUrl: "http://localhost:5174/petal.hooks.js",  // loaded in dev only
-  },
-],`} />
+            <CodeBlock label="terminal" code={`petal app add
+#  App name:              hr-portal
+#  Version:               2.1.0
+#  Dev server URL:        http://localhost:5174/petal.hooks.js
+#  Production bundle URL: https://cdn.mycompany.com/hr-portal/2.1.0/petal.hooks.js`} />
             <div className="mt-3">
               <Callout variant="tip">
                 In development (<Mono>pnpm dev</Mono>), Petal loads from <Mono>devUrl</Mono> instead of <Mono>url</Mono>. Point it at your Vite dev server for instant HMR without deploying to a CDN.
@@ -317,18 +314,15 @@ pnpm install`} />
             <CodeBlock label="terminal" code={`pnpm dev
 # Vite dev server starts at http://localhost:5174`} />
 
-            <h3 className="font-semibold text-foreground mt-8 mb-3">Step 3 · Register your app in petal.config.ts</h3>
+            <h3 className="font-semibold text-foreground mt-8 mb-3">Step 3 · Register your app</h3>
             <p className="text-sm text-muted-foreground mb-3">
-              Ask your Petal host administrator to add your app to <Mono>petal.config.ts</Mono> with your dev server URL:
+              Ask your Petal host administrator to run <Mono>petal app add</Mono> with your dev server URL. No restart needed — the next page load picks it up:
             </p>
-            <CodeBlock label="petal.config.ts (host — admin adds this)" code={`apps: [
-  {
-    name: "my-app",
-    version: "1.0.0",
-    url: "https://cdn.example.com/my-app/1.0.0/petal.hooks.js",
-    devUrl: "http://localhost:5174/petal.hooks.js",
-  },
-],`} />
+            <CodeBlock label="terminal (run on the host)" code={`petal app add
+#  App name:              my-app
+#  Version:               1.0.0
+#  Dev server URL:        http://localhost:5174/petal.hooks.js
+#  Production bundle URL: https://cdn.example.com/my-app/1.0.0/petal.hooks.js`} />
 
             <div className="mt-3">
               <Callout variant="tip">
@@ -361,7 +355,7 @@ pnpm install`} />
 pnpm start    # → http://localhost:3000`} />
             <div className="mt-3 mb-8">
               <Callout variant="info">
-                <Mono>petal.config.ts</Mono> is processed at <strong>build time</strong> by <Mono>withPetal()</Mono>. After adding or changing apps, re-run <Mono>pnpm build</Mono> and redeploy.
+                <Mono>petal.config.ts</Mono> is processed at startup by <Mono>withPetal()</Mono>. Apps registered via <Mono>petal app add</Mono> (<Mono>petal.apps.json</Mono>) are read at request time — no restart or rebuild needed when they change.
               </Callout>
             </div>
 
@@ -397,13 +391,13 @@ docker-compose.yml  # pulls ghcr.io/petalframework/petal:latest`} />
 
             <h3 className="font-semibold text-foreground mt-8 mb-3">Adding apps to a Docker deployment</h3>
             <p className="text-sm text-muted-foreground mb-3">
-              Apps are defined in <Mono>petal.config.ts</Mono> and baked in at build time. Your <Mono>.env.local</Mono> only needs the backend URL:
+              Your <Mono>.env.local</Mono> only needs the backend URL. Register apps with <Mono>petal app add</Mono> — they are read at request time, no image rebuild needed:
             </p>
             <CodeBlock label=".env.local (Docker)" code={`FRAPPE_BACKEND_URL=http://frappe:8000
 NEXT_PUBLIC_FRONTEND_URL=https://petal.mycompany.com`} />
             <div className="mt-3">
               <Callout variant="tip">
-                To change which apps load, update <Mono>petal.config.ts</Mono> and rebuild the image.
+                Run <Mono>petal app add</Mono> on the host to register new apps. Changes take effect on the next request — no container restart required.
               </Callout>
             </div>
           </section>
@@ -640,18 +634,15 @@ export const hooks: PetalHooks = {
 # Outputs: dist/petal.hooks.js  (single ESM bundle)
 # Upload dist/petal.hooks.js to your CDN / object storage`} />
 
-            <h3 className="font-semibold text-foreground mt-8 mb-3">6 · Register in petal.config.ts</h3>
+            <h3 className="font-semibold text-foreground mt-8 mb-3">6 · Register with the CLI</h3>
             <p className="text-sm text-muted-foreground mb-3">
-              Add your app to the host&apos;s <Mono>petal.config.ts</Mono> and restart (or rebuild for source deployments):
+              Run <Mono>petal app add</Mono> on the host. No restart needed — the next page load picks it up:
             </p>
-            <CodeBlock label="petal.config.ts (on the host)" code={`apps: [
-  {
-    name: "my-app",
-    version: "1.0.0",
-    url: "https://cdn.example.com/my-app/1.0.0/petal.hooks.js",
-    devUrl: "http://localhost:5174/petal.hooks.js",
-  },
-],`} />
+            <CodeBlock label="terminal (run on the host)" code={`petal app add
+#  App name:              my-app
+#  Version:               1.0.0
+#  Dev server URL:        http://localhost:5174/petal.hooks.js
+#  Production bundle URL: https://cdn.example.com/my-app/1.0.0/petal.hooks.js`} />
             <div className="mt-3">
               <Callout variant="tip">
                 When <Mono>NODE_ENV=development</Mono>, Petal loads from <Mono>devUrl</Mono> instead of <Mono>url</Mono> — point it at your Vite dev server for instant HMR without deploying.
