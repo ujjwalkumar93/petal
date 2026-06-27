@@ -54,7 +54,7 @@ Petal is an open-source alternative to Frappe Desk. It connects to any Frappe  b
 
 ### How app loading works
 
-1. At Next.js startup, `next.config.js` reads `petal.config.ts` via `withPetal()`, baking the `apps` array into the `PETAL_APPS` environment variable. If a `petal.apps.json` override file exists, that takes priority over the env var at request time.
+1. At Next.js startup, `next.config.js` reads `petal.config.ts` via `withPetal()`, which writes app config to `.petal/config.json`. The `/api/config` route reads that file on every request.
 2. The browser receives the app list from `/api/config` and calls `import(url)` for each app's `petal.hooks.js`.
 3. `on_init` fires immediately (pre-auth): CSS injection, icon registration, theme patches.
 4. Petal checks the Frappe session. Unauthenticated → `/login`.
@@ -112,13 +112,7 @@ petal/
 
 ## Quick Start
 
-### 1. Install the CLI
-
-```bash
-npm install -g @ujjwalkumar93/petal-cli
-```
-
-### 2. Clone the repo
+### 1. Clone the repo
 
 ```bash
 git clone https://github.com/ujjwalkumar93/petal.git
@@ -126,7 +120,7 @@ cd petal
 pnpm install
 ```
 
-### 3. Configure and start
+### 2. Configure and start
 
 ```bash
 # Point Petal at your Frappe backend (creates petal.config.ts and .env.local)
@@ -207,23 +201,11 @@ petal app remove foo      # unregister
 ### `.env.local`
 
 ```env
-# Server-side only — never sent to the browser
-FRAPPE_INTERNAL_URL=http://localhost:8000
-NEXT_PUBLIC_FRAPPE_SITE=localhost
+FRAPPE_BACKEND_URL=http://localhost:8000
 
 NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000
 NEXT_PUBLIC_APP_NAME=Petal
 NEXT_PUBLIC_APP_VERSION=1.0.0
-```
-
-### Priority chain for app loading
-
-```
-petal.apps.json on disk        ← per-request, no restart (optional override)
-        ↓  (file missing)
-PETAL_APPS env var             ← baked from petal.config.ts at startup
-        ↓  (env missing)
-empty — no custom apps loaded
 ```
 
 ---
@@ -718,36 +700,13 @@ After each Vite rebuild, the CLI automatically pings `POST <shell-url>/__petal_h
 
 ### Docker / CI
 
-For containerised deployments there is no `petal.apps.json` or `petal.config.ts` on disk. Pass apps via the `PETAL_APPS` environment variable instead:
+Apps are defined in `petal.config.ts` and baked into `.petal/config.json` at build time by `withPetal()`. The only env var you need to set at runtime is the backend URL:
 
 ```env
-PETAL_APPS=[{"name":"billing-fe","version":"1.0.0","url":"https://cdn.example.com/billing-fe/petal.hooks.js"}]
+FRAPPE_BACKEND_URL=http://frappe:8000
 ```
 
-`petal setup` generates a `docker-compose.yml` with a commented example:
-
-```yaml
-services:
-  petal:
-    image: ghcr.io/petalframework/petal:latest
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env.local
-    environment:
-      # PETAL_APPS: '[{"name":"billing-fe","version":"1.0.0","url":"https://cdn.example.com/billing-fe/petal.hooks.js"}]'
-    restart: unless-stopped
-```
-
-### Priority chain
-
-```
-petal.apps.json on disk        ← per-request, no restart needed
-        ↓  (file missing)
-PETAL_APPS env var             ← Docker / CI, or baked from petal.config.ts
-        ↓  (env missing)
-no apps loaded
-```
+`petal setup` generates a `docker-compose.yml` with `env_file: .env.local` wired up.
 
 ### Deploying a custom app bundle
 
@@ -908,7 +867,7 @@ pathMap: {
 }
 ```
 
-The env var `PETAL_PATH_MAP` (JSON string) is also supported for Docker deployments.
+Custom path mappings belong in `petal.config.ts` and are picked up automatically at startup.
 
 ---
 
@@ -1067,7 +1026,7 @@ Successful boot in browser console:
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Sidebar is empty | CORS not configured or Frappe not running | Check `site_config.json`, run `bench restart` |
-| Login redirect loop | Wrong `FRAPPE_INTERNAL_URL` | Check `.env.local`, restart `petal start` |
+| Login redirect loop | Wrong `FRAPPE_BACKEND_URL` | Check `.env.local`, restart `petal start` |
 | `Failed to fetch dynamically imported module` | Dev server not running or wrong port | Run `petal dev` inside your app directory; check `devUrl` in `petal.config.ts` |
 | App fails to load (red banner) | Wrong `url`/`devUrl`, or `on_init` threw | Check network tab; verify URLs; check console for the thrown error |
 | CSS not applied | `petal.hooks.css` not uploaded alongside `.js`, or `injectStylesheet` not called | Ensure both files are in the same CDN directory; check `on_init` calls `injectStylesheet()` |
