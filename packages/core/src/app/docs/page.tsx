@@ -145,7 +145,7 @@ const user = await frappe.getDoc("User", "Administrator")`}
         <h2 className="text-xl font-semibold mb-3 text-primary">📚 Resources</h2>
         <ul className="space-y-2 text-sm text-foreground">
           <li>
-            <a href={process.env.NEXT_PUBLIC_FRAPPE_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+            <a href={process.env.NEXT_PUBLIC_FRAPPE_BACKEND_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
               Frappe Documentation ↗
             </a>
           </li>

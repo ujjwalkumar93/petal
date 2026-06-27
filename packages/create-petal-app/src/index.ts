@@ -159,8 +159,7 @@ function writeEnvLocal(dir: string, opts: { backend: string; site: string }) {
   writeFileSync(
     join(dir, ".env.local"),
     `# Frappe Backend (server-side only — never sent to the browser)
-FRAPPE_INTERNAL_URL=${opts.backend}
-NEXT_PUBLIC_FRAPPE_SITE=${opts.site}
+FRAPPE_BACKEND_URL=${opts.backend}
 
 # Frontend Configuration
 NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000

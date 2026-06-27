@@ -24,9 +24,9 @@ export interface PetalAppMeta {
 }
 
 export interface PetalConfig {
-  /** Frappe backend URL. Server-side only in Docker deployments — set via FRAPPE_URL env var. */
+  /** Frappe backend URL. Fallback if FRAPPE_BACKEND_URL is not set in .env. */
   backend?: string
-  apps: PetalAppMeta[]
+  apps?: PetalAppMeta[]
   theme?: Partial<PetalTheme>
   /**
    * Override or extend the proxy's neutral-path → backend-path translation table.

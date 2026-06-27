@@ -178,7 +178,7 @@ export default function PrintDocsPage() {
 import myAppHooks from "./src/apps/my-app/hooks"
 
 const config: PetalConfig = {
-  backend: process.env.NEXT_PUBLIC_FRAPPE_URL ?? "http://localhost:8000",
+  backend: process.env.FRAPPE_BACKEND_URL ?? "http://localhost:8000",
 
   apps: [
     // --- Local app (imported directly) ---
@@ -354,7 +354,7 @@ appRegistry.getMergedSettings()`}</pre>
           <p className="text-sm text-foreground/80 mb-3">
             All Frappe API calls go through the Next.js proxy at{" "}
             <code className="bg-muted px-1 rounded text-xs">/api/frappe/[...path]</code>, which forwards to the Frappe backend.
-            The raw <code className="bg-muted px-1 rounded text-xs">NEXT_PUBLIC_FRAPPE_URL</code> is never exposed to the browser.
+            The raw <code className="bg-muted px-1 rounded text-xs">FRAPPE_BACKEND_URL</code> is never exposed to the browser.
           </p>
           <pre className="bg-muted/50 border border-border rounded-lg p-4 text-xs font-mono overflow-x-auto">{`import { useFrappe } from "@/hooks/useFrappe"
 
@@ -647,7 +647,7 @@ export default function Leads() {
           <h2 className="text-2xl font-bold mb-4 text-foreground border-b border-border pb-2">14. Environment Variables</h2>
           <div className="space-y-2">
             {[
-              ["NEXT_PUBLIC_FRAPPE_URL", "Required", "Frappe backend base URL. e.g. http://erp.example.com"],
+              ["FRAPPE_BACKEND_URL", "Required", "Frappe backend base URL. e.g. http://erp.example.com"],
               ["NEXT_PUBLIC_FRONTEND_URL", "Optional", "This frontend's URL (used in CORS hint on /docs). e.g. http://localhost:3000"],
             ].map(([key, req, desc]) => (
               <div key={key as string} className="text-xs border border-border rounded-lg p-3 grid grid-cols-5 gap-3 items-start">
@@ -658,7 +658,7 @@ export default function Leads() {
             ))}
           </div>
           <pre className="bg-muted/50 border border-border rounded-lg p-4 text-xs font-mono overflow-x-auto mt-4">{`# packages/core/.env.local
-NEXT_PUBLIC_FRAPPE_URL=http://localhost:8000
+FRAPPE_BACKEND_URL=http://localhost:8000
 NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000`}</pre>
           <p className="text-sm text-muted-foreground mt-3">
             Frappe CORS must allow the frontend origin with credentials:
