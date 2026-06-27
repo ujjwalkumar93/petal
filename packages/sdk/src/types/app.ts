@@ -24,10 +24,7 @@ export interface PetalAppMeta {
 }
 
 export interface PetalConfig {
-  /** Frappe backend URL. Fallback if FRAPPE_BACKEND_URL is not set in .env. */
-  backend?: string
   apps?: PetalAppMeta[]
-  theme?: Partial<PetalTheme>
   /**
    * Override or extend the proxy's neutral-path → backend-path translation table.
    * Keys are the neutral paths used in the browser (e.g. "auth/csrf").
@@ -41,10 +38,4 @@ export interface PetalConfig {
    * }
    */
   pathMap?: Record<string, string>
-}
-
-export interface PetalTheme {
-  primaryColor: string
-  borderRadius: string
-  fontFamily: string
 }
