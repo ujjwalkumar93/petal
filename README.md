@@ -795,7 +795,7 @@ All browser requests go through `/api/v1/…`. The proxy translates neutral Peta
 | `auth/me` | `api/method/frappe.auth.get_logged_user` |
 | `auth/csrf` | `api/method/<your_app>.api.get_csrf_token` |
 | `auth/userinfo` | `api/resource/User` |
-| `workspace/sidebar` | `api/method/frappe.desk.desktop.get_workspace_sidebar_items` |
+| `workspace/sidebar` | `api/method/frappe.desk.desktop.get_workspaces` |
 | `workspace/page` | `api/method/frappe.desk.desktop.get_desktop_page` |
 | `doc/:doctype[/:name]` | `api/resource/:doctype[/:name]` |
 | `records/count` | `api/method/frappe.client.get_count` |
