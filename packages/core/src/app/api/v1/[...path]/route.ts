@@ -23,7 +23,7 @@ const DROP_RESPONSE_HEADERS = new Set([
  *   auth/login           → api/method/login
  *   auth/logout          → api/method/logout
  *   auth/me              → api/method/frappe.auth.get_logged_user
- *   workspace/sidebar    → api/method/frappe.desk.desktop.get_workspace_sidebar_items
+ *   workspace/sidebar    → api/method/frappe.desk.desktop.get_workspaces
  *   doc/:doctype[/:name] → api/resource/:doctype[/:name]
  *   records/count        → api/method/frappe.client.get_count
  *   records/value        → api/method/frappe.client.get_value
@@ -41,7 +41,7 @@ const EXACT_MAP: Record<string, string> = {
   "auth/me": "api/method/frappe.auth.get_logged_user",
   "auth/csrf": "api/method/accounting.accounting.api.accounting.get_csrf_token",
   "auth/userinfo": "api/resource/User",
-  "workspace/sidebar": "api/method/frappe.desk.desktop.get_workspace_sidebar_items",
+  "workspace/sidebar": "api/method/frappe.desk.desktop.get_workspaces",
   "workspace/page": "api/method/frappe.desk.desktop.get_desktop_page",
   "records/count": "api/method/frappe.client.get_count",
   "records/value": "api/method/frappe.client.get_value",
