@@ -182,6 +182,9 @@ NEXT_PUBLIC_APP_VERSION=1.0.0
 | `FRAPPE_SITE_NAME` | runtime | backend hostname | Frappe site name (Host header + realtime namespace), if it differs from the hostname |
 | `PETAL_APPS` | runtime | — | JSON array of apps; used when `petal.apps.json` is absent, overrides `petal.config.ts` |
 | `PETAL_TENANTS` | runtime | — | JSON object keyed by hostname; enables multi-tenancy (see `/petal-docs#multi-tenancy`) |
+| `PETAL_TRUST_PROXY` | runtime | off | Number of reverse proxies in front of Petal (`1`/`true` = one). Only then are `X-Forwarded-*` headers trusted. See [SECURITY.md](SECURITY.md) |
+| `PETAL_MAX_BODY_MB` | runtime | `50` | Largest request body (upload) passed to Frappe; larger ones get `413` |
+| `PETAL_UPSTREAM_TIMEOUT_MS` | runtime | `120000` | How long to wait for Frappe's response headers before answering `504` |
 | `FRAPPE_SOCKETIO_URL` | build | backend host on `:9000` | Frappe realtime server, reached via the same-origin `/socket.io` rewrite |
 | `PETAL_REALTIME` | build | `1` | Set `0` to disable live updates |
 
