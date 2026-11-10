@@ -84,7 +84,11 @@ async function proxy(req: NextRequest, ctx: RouteCtx): Promise<NextResponse> {
   const backend = getBackend(req)
   if (!backend) return NextResponse.json({ error: "Unknown tenant" }, { status: 404 })
   const { frappeUrl, frappeSiteHost } = backend
+  // Next has already decoded each segment ("INV%2F1" → "INV/1"). Match routes
+  // on the decoded form; send the re-encoded form upstream, or "#", "?", "%"
+  // and "/" inside a document name would change which URL Frappe sees.
   const neutralPath = params.path.join("/")
+  const encodedPath = params.path.map(encodeURIComponent).join("/")
   const search = req.nextUrl.search
 
   const reqHeaders: Record<string, string> = {}
@@ -128,7 +132,7 @@ async function proxy(req: NextRequest, ctx: RouteCtx): Promise<NextResponse> {
   }
 
   if (neutralPath.startsWith("assets/")) {
-    const target = `${frappeUrl}/${neutralPath}${search}`
+    const target = `${frappeUrl}/${encodedPath}${search}`
     try {
       const frappeRes = await fetch(target, { headers: reqHeaders, redirect: "manual", cache: "no-store" })
       return buildResponse(frappeRes)
@@ -200,7 +204,7 @@ async function proxy(req: NextRequest, ctx: RouteCtx): Promise<NextResponse> {
     }
   }
 
-  const frappe_path = translatePath(neutralPath, getEffectivePathMap(req))
+  const frappe_path = translatePath(encodedPath, getEffectivePathMap(req))
   const target = `${frappeUrl}/${frappe_path}${search}`
 
   try {

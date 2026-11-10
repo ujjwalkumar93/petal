@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest"
-import { describeRequest, parseJsonObject, pushHistory, toClientSnippet, toCurlSnippet, validateRequest } from "./playground"
+import { describe, it, expect, vi } from "vitest"
+import { describeRequest, parseJsonObject, pushHistory, runPlaygroundRequest, toClientSnippet, toCurlSnippet, validateRequest } from "./playground"
 import type { HistoryEntry } from "./playground"
+import type { FrappeClient } from "@/lib/frappe/client"
 
 describe("validateRequest", () => {
   it("validates method paths and JSON args", () => {
@@ -55,5 +56,27 @@ describe("history", () => {
   it("describes requests", () => {
     expect(describeRequest({ kind: "get_doc", doctype: "User", name: "x" })).toBe("GET User/x")
     expect(describeRequest({ kind: "get_list", doctype: "User", fields: "", filters: "", limit: 1 })).toBe("LIST User")
+  })
+})
+
+describe("runPlaygroundRequest", () => {
+  it("times a successful call and records when it ran", async () => {
+    const frappe = { callMethod: vi.fn(async () => ({ ok: 1 })), invalidate: vi.fn() } as unknown as FrappeClient
+    const before = Date.now()
+    const r = await runPlaygroundRequest(frappe, { kind: "method", method: " frappe.ping ", args: '{"a":1}' })
+
+    expect(r.ok).toBe(true)
+    expect(r.body).toEqual({ ok: 1 })
+    expect(r.ms).toBeGreaterThanOrEqual(0)
+    expect(r.at).toBeGreaterThanOrEqual(before)
+    expect(frappe.callMethod).toHaveBeenCalledWith("frappe.ping", { a: 1 })
+  })
+
+  it("returns failures as data instead of throwing", async () => {
+    const frappe = { getDoc: vi.fn(async () => { throw new Error("Not permitted") }), invalidate: vi.fn() } as unknown as FrappeClient
+    const r = await runPlaygroundRequest(frappe, { kind: "get_doc", doctype: "Item", name: "I-1" })
+
+    expect(r.ok).toBe(false)
+    expect(r.body).toEqual({ error: "Not permitted" })
   })
 })

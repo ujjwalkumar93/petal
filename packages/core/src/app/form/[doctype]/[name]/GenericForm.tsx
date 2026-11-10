@@ -18,6 +18,7 @@ import { useRealtimeDoc } from "@/hooks/useRealtime"
 import { buildAmendment, computeDefaults, missingRequired, prefillKey, stripForCopy } from "@/lib/doc/doc-utils"
 import { useCompatForm } from "./useCompatForm"
 import { safeInternalPath } from "@/lib/nav/safe-path"
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard"
 import type { LinkSearchContext } from "./components/types"
 import { CompatActions, CompatBanners, CompatIndicator } from "@/components/compat/FormChrome"
 
@@ -95,6 +96,7 @@ export function GenericForm({ doctype, name, onIsSingle, toolbarSlot }: { doctyp
   const saving     = compatOn ? (cd?.saving ?? false) || savingState : savingState
   const isNew      = compatOn ? (cd?.isNew ?? routeIsNew) : routeIsNew
   const isDirty    = compatOn ? (cd?.isDirty ?? false) : isDirtyState
+  useUnsavedChangesGuard(isDirty)
   const isEditing  = compatOn ? Number(values.docstatus ?? 0) === 0 && !cd?.readOnly : isEditingState
   // Saved, non-single docs get the right sidebar (assignments, attachments, info) + activity feed
   const showActivity = !isNew && !!meta && meta.issingle !== 1
@@ -214,7 +216,6 @@ export function GenericForm({ doctype, name, onIsSingle, toolbarSlot }: { doctyp
   const behaviorFn    = hooks.form_field_behaviors?.[doctype]
   const fieldBehaviors = useMemo(
     () => (behaviorFn ? behaviorFn(values) : {}),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [behaviorFn, values]
   )
 

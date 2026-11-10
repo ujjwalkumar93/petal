@@ -1,5 +1,7 @@
 "use client"
-import { Suspense, lazy, useMemo, useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState } from "react"
+import Link from "next/link"
+import { AppComponent } from "@/lib/registry/lazy-component"
 import { useRouter } from "next/navigation"
 import { usePetalStore } from "@/store/petal-store"
 import { authService } from "@/lib/auth/auth-service"
@@ -8,39 +10,17 @@ import { MenuIcon, ProfileIcon, GearIcon, HelpIcon, AppearanceIcon, LogoutIcon, 
 import { GlobalSearch } from "@/components/shell/GlobalSearch"
 import { NotificationCenter } from "@/components/shell/NotificationCenter"
 import type { NavbarItem } from "@petal/sdk"
+import { confirmLeave } from "@/lib/nav/leave-guard"
+import { resetSession } from "@/lib/auth/session"
+import { useQueryClient } from "@tanstack/react-query"
 
 function SafeLazyComponent({ item }: { item: NavbarItem }) {
-  const Component = useMemo(
-    () =>
-      lazy(async () => {
-        if (typeof item.component !== "function") {
-          console.error("[Petal] Navbar item has invalid component loader:", item)
-          return { default: () => null }
-        }
-        try {
-          const module = await item.component()
-          if (!module?.default) {
-            console.error("[Petal] Navbar component has no default export:", item)
-            return { default: () => null }
-          }
-          return module
-        } catch (error) {
-          console.error("[Petal] Failed to load navbar component:", error)
-          return { default: () => null }
-        }
-      }),
-    [item.component]
-  )
-
-  return (
-    <Suspense fallback={null}>
-      <Component />
-    </Suspense>
-  )
+  return <AppComponent loader={item.component} safeLabel="Navbar item" />
 }
 
 export function Navbar() {
-  const { hooks, user, setUser, setAuthStatus, toggleSidebar } = usePetalStore()
+  const { hooks, user, setAuthStatus, toggleSidebar } = usePetalStore()
+  const queryClient = useQueryClient()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showThemePicker, setShowThemePicker] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -58,10 +38,11 @@ export function Navbar() {
   }, [showUserMenu])
 
   async function handleLogout() {
+    if (!confirmLeave()) return
     setLoggingOut(true)
     const result = await authService.logout()
     if (result.success) {
-      setUser(null)
+      resetSession(queryClient)
       setAuthStatus("unauthenticated")
       router.replace(result.redirectTo)
     } else {
@@ -136,21 +117,21 @@ export function Navbar() {
           {/* Dropdown Menu */}
           {showUserMenu && (
             <div className="absolute right-0 mt-2 w-52 bg-background border border-border rounded-xl shadow-xl py-2 z-[200]">
-              <a href="/profile" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent text-foreground transition-colors">
+              <Link href="/profile" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent text-foreground transition-colors">
                 <ProfileIcon /> View Profile
-              </a>
-              <a href="/settings" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent text-foreground transition-colors">
+              </Link>
+              <Link href="/settings" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent text-foreground transition-colors">
                 <GearIcon /> Settings
-              </a>
-              <a href="/apps" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent text-foreground transition-colors">
+              </Link>
+              <Link href="/apps" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent text-foreground transition-colors">
                 <AppsIcon /> Installed Apps
-              </a>
-              <a href="/petal-docs" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent text-foreground transition-colors">
+              </Link>
+              <Link href="/petal-docs" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent text-foreground transition-colors">
                 <DocsIcon /> Petal Documentation
-              </a>
-              <a href="/help" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent text-foreground transition-colors">
+              </Link>
+              <Link href="/help" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent text-foreground transition-colors">
                 <HelpIcon /> Help & Support
-              </a>
+              </Link>
               <hr className="my-2 border-border" />
               <button
                 onClick={() => { setShowThemePicker(true); setShowUserMenu(false) }}

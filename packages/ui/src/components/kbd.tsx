@@ -1,7 +1,7 @@
 import { cn } from "../lib/utils"
 import type { HTMLAttributes } from "react"
 
-export interface KbdProps extends HTMLAttributes<HTMLElement> {}
+export type KbdProps = HTMLAttributes<HTMLElement>
 
 /**
  * Renders a single keyboard key styled as a <kbd> element.

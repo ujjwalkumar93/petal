@@ -48,7 +48,10 @@ interface SetupSlice {
   setSetupState: (state: SetupState) => void
 }
 
-type PetalState = AuthSlice & HooksSlice & ThemeSlice & UISlice & SettingsSlice & SetupSlice
+type PetalState = AuthSlice & HooksSlice & ThemeSlice & UISlice & SettingsSlice & SetupSlice & {
+  /** Drop everything that belongs to the signed-in user (see resetSession). Theme and layout prefs stay. */
+  resetUserState: () => void
+}
 
 function createAuthSlice(set: (fn: (s: PetalState) => Partial<PetalState>) => void): AuthSlice {
   return {
@@ -113,10 +116,18 @@ export const usePetalStore = create<PetalState>()(
       setUser: (user) => set((s) => (
         s.user?.name === user?.name ? { user } : { user, setupState: "unknown" }
       )),
+      // Sidebar items come from the user's permitted workspaces.
+      resetUserState: () => set(() => ({ user: null, setupState: "unknown", sidebarItems: [] })),
     }),
     {
       name: "petal-store",
-      storage: createJSONStorage(() => sessionStorage),
+      // Browser only. Node ≥25 has its own process-wide sessionStorage global:
+      // using it during SSR would share one "session" between every request.
+      // Throwing here makes zustand skip persistence on the server.
+      storage: createJSONStorage(() => {
+        if (typeof window === "undefined") throw new Error("no session storage on the server")
+        return window.sessionStorage
+      }),
       // Only persist the user + a completed setup check — everything else rebuilds on boot
       partialize: (state) => ({
         user: state.user,

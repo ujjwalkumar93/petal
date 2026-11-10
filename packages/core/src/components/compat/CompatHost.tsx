@@ -11,17 +11,21 @@ import { ChildTable, FieldInput, cn } from "@petal/ui"
 import type { ChildTableMeta } from "@petal/ui"
 import { uiStore, deskUrlToPath, type CompatDialog, type DialogField, type MsgEntry, type PickerEntry } from "@/lib/frappe-compat"
 import { setCompatNavigator } from "@/lib/frappe-compat/browser"
+import { confirmLeave } from "@/lib/nav/leave-guard"
+import { useGuardedRouter } from "@/hooks/useGuardedRouter"
 import { FrappeHtml, indicatorClass } from "./FrappeHtml"
 
 const w = () => (typeof window !== "undefined" ? (window as any) : ({} as any))
 
 export function CompatHost() {
   const router = useRouter()
+  // Scripts' frappe.set_route() can fire while the form has unsaved edits.
+  const guardedRouter = useGuardedRouter()
   const state = useSyncExternalStore(uiStore.subscribe, uiStore.getState, uiStore.getState)
 
   useEffect(() => {
-    setCompatNavigator((path, opts) => (opts?.replace ? router.replace(path) : router.push(path)))
-  }, [router])
+    setCompatNavigator((path, opts) => (opts?.replace ? guardedRouter.replace(path) : guardedRouter.push(path)))
+  }, [guardedRouter])
 
   // Desk links inside script-rendered HTML (/app/sales-invoice/…) → Petal routes.
   useEffect(() => {
@@ -33,6 +37,9 @@ export function CompatHost() {
       const path = href.startsWith("/app") || href.startsWith("#") ? deskUrlToPath(href) : href.startsWith("/") ? href : null
       if (!path || a.target === "_blank") return
       e.preventDefault()
+      // Desk "#Form/…" links aren't real navigations, so useUnsavedChangesGuard's
+      // link check skips them; ask here. Path links were already confirmed there.
+      if (href.startsWith("#") && !confirmLeave()) return
       router.push(path)
     }
     document.addEventListener("click", onClick)
@@ -245,7 +252,7 @@ function DialogFieldView({ dialog, field }: { dialog: CompatDialog; field: Dialo
           meta={meta}
           value={df.data ?? []}
           disabled={readOnly}
-          {...(readOnly ? {} : { onChange: (rows: Record<string, unknown>[]) => { df.data = rows.map((r, i) => ({ idx: i + 1, name: (r.name as string) ?? `row ${i + 1}`, ...r })); dialog.refresh() } })}
+          {...(readOnly ? {} : { onChange: (rows: Record<string, unknown>[]) => { void field.set_value(rows.map((r, i) => ({ idx: i + 1, name: (r.name as string) ?? `row ${i + 1}`, ...r }))) } })}
           {...(df.cannot_add_rows ? { cannotAddRows: true } : {})}
           onLinkSearch={(dt, q) => w().frappe.call({ method: "frappe.desk.search.search_link", args: { txt: q, doctype: dt, page_length: 10 } }).then((r: any) => r?.message ?? [], () => [])}
         />

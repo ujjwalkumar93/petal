@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from "child_process"
 import { existsSync } from "fs"
 import { join } from "path"
+import { createRequire } from "module"
 import pc from "picocolors"
 import { findPetalCoreDir, findAppDirectory } from "../lib/apps-config"
 import { spawnAppDevProcesses } from "../lib/spawn-app-dev"
@@ -10,11 +11,13 @@ function loadAppsFromConfig(coreDir: string): PetalAppMeta[] {
   const configPath = join(coreDir, "petal.config.ts")
   if (!existsSync(configPath)) return []
   try {
+    // petal.config.ts is loaded at runtime from the user's install (tsx registers the TS loader)
+    const load = createRequire(configPath)
     const tsxCjs = join(coreDir, "node_modules/tsx/cjs")
-    if (existsSync(tsxCjs)) require(tsxCjs)
+    if (existsSync(tsxCjs)) load(tsxCjs)
     // Clear module cache so restarts pick up changes
-    Object.keys(require.cache).forEach((k) => { if (k.includes("petal.config")) delete require.cache[k] })
-    const mod = require(configPath) as { default?: PetalConfig }
+    Object.keys(load.cache).forEach((k) => { if (k.includes("petal.config")) delete load.cache[k] })
+    const mod = load(configPath) as { default?: PetalConfig }
     return mod.default?.apps ?? []
   } catch {
     return []
@@ -108,7 +111,7 @@ export async function startPetal(options: StartOptions): Promise<void> {
   const shutdown = (): void => {
     console.log(pc.dim("\n  Stopping...\n"))
 
-    for (const { app, builder, server } of appProcesses) {
+    for (const { builder, server } of appProcesses) {
       try {
         builder.kill("SIGTERM")
         server.kill("SIGTERM")

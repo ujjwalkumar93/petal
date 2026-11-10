@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, no-new-func */
 /**
  * Frappe-compatible client runtime for Petal.
  *

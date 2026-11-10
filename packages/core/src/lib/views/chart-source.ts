@@ -64,7 +64,6 @@ export function evalChartSource(
     _: translate,
   }
 
-  // eslint-disable-next-line no-new-func
   new Function("frappe", "__", code + `\n//# sourceURL=petal-chart-source:///${encodeURIComponent(sourceName)}`)(shim, translate)
 
   const sources = (shim.dashboards as { chart_sources: Record<string, ChartSourceSettings> }).chart_sources

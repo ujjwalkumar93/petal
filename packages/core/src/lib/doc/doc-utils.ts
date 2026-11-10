@@ -1,6 +1,8 @@
 // Pure document helpers shared by the form engine: defaults, validation,
 // duplicate and amend. Kept free of React so they are unit-testable.
 
+import { fieldState } from "./field-state"
+
 type FieldLike = {
   fieldname: string
   fieldtype: string
@@ -9,6 +11,7 @@ type FieldLike = {
   reqd?: 0 | 1
   no_copy?: 0 | 1
   hidden?: 0 | 1
+  mandatory_depends_on?: string
 }
 
 /** System fields that must never be copied into a new document. */
@@ -63,14 +66,20 @@ function isEmpty(v: unknown): boolean {
   return v == null || v === "" || (Array.isArray(v) && v.length === 0)
 }
 
-/** Fieldnames that are mandatory, visible, and empty. */
+/**
+ * Fieldnames that are mandatory (reqd, or mandatory_depends_on via fieldState)
+ * and empty. Like Desk's check_mandatory, a field hidden by depends_on is still
+ * checked: the server rejects it either way. Fields hidden statically or by an
+ * app's field_behaviors are skipped, since the user has no way to fill them.
+ */
 export function missingRequired(
   fields: FieldLike[],
   values: Record<string, unknown>,
   behaviors: Record<string, { hidden?: boolean }> = {},
 ): string[] {
   return fields
-    .filter((f) => f.reqd === 1 && f.hidden !== 1 && !behaviors[f.fieldname]?.hidden && isEmpty(values[f.fieldname]))
+    .filter((f) => f.hidden !== 1 && !behaviors[f.fieldname]?.hidden)
+    .filter((f) => fieldState(f, values).mandatory && isEmpty(values[f.fieldname]))
     .map((f) => f.fieldname)
 }
 

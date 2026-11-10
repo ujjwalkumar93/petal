@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Smaller Desk APIs form scripts reach for: status indicators, the
  * address/contact panels and file uploads. Charts, tables and the scanner are

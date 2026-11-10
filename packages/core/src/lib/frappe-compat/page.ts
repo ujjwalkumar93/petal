@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Desk pages (frappe.pages[name], served at /app/<name> in Desk) on Petal.
  *

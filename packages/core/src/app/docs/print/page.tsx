@@ -1,4 +1,5 @@
 "use client"
+import Link from "next/link"
 
 export default function PrintDocsPage() {
   return (
@@ -32,12 +33,12 @@ export default function PrintDocsPage() {
           </svg>
           Download PDF
         </button>
-        <a
+        <Link
           href="/docs"
           className="flex items-center gap-2 px-5 py-3 bg-white border border-border text-sm font-semibold rounded-xl shadow-lg hover:bg-accent transition-colors"
         >
           ← Back to Docs
-        </a>
+        </Link>
       </div>
 
       <div className="max-w-3xl mx-auto px-8 py-12 font-sans text-foreground leading-relaxed">
@@ -392,7 +393,7 @@ const user = await frappe.getLoggedInUser()
           <h2 className="text-2xl font-bold mb-4 text-foreground border-b border-border pb-2">8. Icon Registry</h2>
           <p className="text-sm text-foreground/80 mb-3">
             Named icons in <code className="bg-muted px-1 rounded text-xs">SidebarItem.icon</code> are resolved through the global
-            singleton <code className="bg-muted px-1 rounded text-xs">iconRegistry</code>. Register custom icons in your app's
+            singleton <code className="bg-muted px-1 rounded text-xs">iconRegistry</code>. Register custom icons in your app&apos;s
             <code className="bg-muted px-1 rounded text-xs"> on_boot</code> hook.
           </p>
           <pre className="bg-muted/50 border border-border rounded-lg p-4 text-xs font-mono overflow-x-auto">{`import { iconRegistry } from "@/lib/icons/icon-registry"
@@ -429,7 +430,7 @@ sidebar_items: [
             Auth state is managed in the Zustand store. <code className="bg-muted px-1 rounded text-xs">PetalProvider</code>{" "}
             calls <code className="bg-muted px-1 rounded text-xs">frappe.getLoggedInUser()</code> on boot.
             If it throws, <code className="bg-muted px-1 rounded text-xs">authStatus</code> is set to{" "}
-            <code className="bg-muted px-1 rounded text-xs">"unauthenticated"</code> and the user is redirected to
+            <code className="bg-muted px-1 rounded text-xs">&quot;unauthenticated&quot;</code> and the user is redirected to
             <code className="bg-muted px-1 rounded text-xs"> /login</code>.
           </p>
           <pre className="bg-muted/50 border border-border rounded-lg p-4 text-xs font-mono overflow-x-auto">{`// Auth state (usePetalStore)

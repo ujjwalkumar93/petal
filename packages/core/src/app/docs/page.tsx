@@ -1,4 +1,5 @@
 "use client"
+import Link from "next/link"
 
 export default function DocsPage() {
   return (
@@ -8,7 +9,7 @@ export default function DocsPage() {
           <h1 className="text-3xl font-bold text-primary mb-2">Documentation</h1>
           <p className="text-muted-foreground">Learn how to build with Petal</p>
         </div>
-        <a
+        <Link
           href="/docs/print"
           className="shrink-0 flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 transition-colors"
         >
@@ -17,7 +18,7 @@ export default function DocsPage() {
             <rect x="3" y="19" width="18" height="2" rx="1" />
           </svg>
           Download PDF
-        </a>
+        </Link>
       </section>
 
       {/* Getting Started */}

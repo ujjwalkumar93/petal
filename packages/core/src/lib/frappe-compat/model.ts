@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, no-new-func */
 /**
  * frappe.model / frappe.meta / frappe.defaults / frappe.perm — ported from
  * frappe/public/js/frappe/model/{model,meta,sync,create_new}.js and defaults.js.
@@ -330,9 +329,9 @@ export function installModel(frappe: Any) {
     get_shared: (doctype: string, name: string) => frappe.model.get_docinfo(doctype, name)?.shared ?? [],
     get_server_module_name(doctype: string) {
       const dt = frappe.model.scrub(doctype)
-      const module = frappe.model.scrub(locals.DocType[doctype].module)
-      const app = frappe.boot.module_app?.[module]
-      return app + "." + module + ".doctype." + dt + "." + dt
+      const moduleName = frappe.model.scrub(locals.DocType[doctype].module)
+      const app = frappe.boot.module_app?.[moduleName]
+      return app + "." + moduleName + ".doctype." + dt + "." + dt
     },
 
     can_create: (dt: string) => (frappe.boot.user.can_create ?? []).indexOf(dt) !== -1,

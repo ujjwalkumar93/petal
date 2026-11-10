@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "fs"
+import { cpSync, existsSync, readFileSync, writeFileSync } from "fs"
 import { join, resolve } from "path"
 import { execSync } from "child_process"
 import prompts from "prompts"

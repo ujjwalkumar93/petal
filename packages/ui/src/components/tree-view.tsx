@@ -92,7 +92,6 @@ const INDENT_PX = 20 // pixels per depth level
 function TreeNodeRow({
   node,
   depth,
-  isLast,
   getState,
   onToggle,
   onNodeClick,

@@ -40,9 +40,6 @@ export async function createApp(appName?: string): Promise<void> {
   const port = answers.port ?? "5174"
   const dir = join(process.cwd(), name)
 
-  const sdkRef = answers.useLocal
-    ? `"file:../petal/packages/sdk"`
-    : `"latest"`
   const sdkPkg = answers.useLocal ? `"file:../petal/packages/sdk"` : `"latest"`
   const uiPkg  = answers.useLocal ? `"file:../petal/packages/ui"`  : `"latest"`
 

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, no-new-func */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Frappe client environment for running Frappe/ERPNext form scripts unchanged.
  *

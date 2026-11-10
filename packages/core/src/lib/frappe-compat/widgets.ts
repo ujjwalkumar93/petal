@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Desk's widgets, backed by the same libraries Desk uses: frappe.Chart is
  * frappe-charts, frappe.DataTable is frappe-datatable, frappe.ui.Scanner uses

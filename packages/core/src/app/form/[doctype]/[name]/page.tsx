@@ -1,5 +1,6 @@
 "use client"
-import { Suspense, lazy, useMemo, useState } from "react"
+import { useState } from "react"
+import { AppComponent } from "@/lib/registry/lazy-component"
 import { useParams } from "next/navigation"
 import { usePetalStore } from "@/store/petal-store"
 import Link from "next/link"
@@ -21,12 +22,7 @@ function FormSlot({
   loader: NonNullable<FormSlotComponents["before"]>
   docname: string
 }) {
-  const Comp = useMemo(() => lazy(loader), [loader])
-  return (
-    <Suspense fallback={<SlotFallback />}>
-      <Comp docname={docname} />
-    </Suspense>
-  )
+  return <AppComponent loader={loader} props={{ docname }} fallback={<SlotFallback />} />
 }
 
 export default function FormPage() {
@@ -38,7 +34,6 @@ export default function FormPage() {
 
   const override = hooks.form_overrides?.[doctype]
   const slots    = hooks.form_slots?.[doctype]
-  const OverrideComponent = useMemo(() => (override ? lazy(override) : null), [override])
   const desk = hooks.frappe_compat?.enabled ? hooks.frappe_compat.desk : undefined
   const inDesk = !!desk?.doctypes?.includes(doctype)
 
@@ -61,10 +56,8 @@ export default function FormPage() {
 
       {inDesk ? (
         <DeskFallback doctype={doctype} name={name} {...(desk?.embed ? { embed: true } : {})} />
-      ) : OverrideComponent ? (
-        <Suspense fallback={<PageLoader label="Loading custom form…" />}>
-          <OverrideComponent docname={name} />
-        </Suspense>
+      ) : override ? (
+        <AppComponent loader={override} props={{ docname: name }} fallback={<PageLoader label="Loading custom form…" />} />
       ) : (
         <>
           {slots?.before && <FormSlot loader={slots.before} docname={name} />}
