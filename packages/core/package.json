@@ -23,6 +23,7 @@
     "@petal/sdk": "workspace:*",
     "@petal/ui": "workspace:*",
     "@tanstack/react-query": "^5.56.2",
+    "dompurify": "3.4.17",
     "frappe-charts": "2.0.0-rc27",
     "frappe-datatable": "1.19.0",
     "html5-qrcode": "2.3.8",

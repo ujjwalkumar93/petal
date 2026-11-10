@@ -1,56 +1,73 @@
 "use client"
 /**
- * Renders HTML produced by Frappe (msgprint, intros, headlines) after removing
- * scripts, styles, SVG animations, event handlers and any URL that isn't
- * http(s), mailto, tel, relative or an inline image. Desk links are rewritten to
+ * Renders HTML produced by Frappe (msgprint, intros, headlines) after
+ * sanitizing it with DOMPurify: no scripts, styles, SVG animations or event
+ * handlers, and no URL that isn't http(s), mailto, tel, relative or an inline
+ * image. Desk links are rewritten to
  * Petal routes by CompatHost's click handler.
  */
 import { useMemo } from "react"
+import DOMPurify, { type DOMPurify as DOMPurifyI } from "dompurify"
 import { cn } from "@petal/ui"
 
-const DROP = new Set([
-  "script", "iframe", "frame", "frameset", "object", "embed", "applet", "link", "meta", "base", "form",
-  "style", "template", "noscript", "animate", "animatemotion", "animatetransform", "set", "foreignobject",
-  "handler", "listener", "math",
-])
+/**
+ * Elements removed with their content, beyond what DOMPurify already drops
+ * (scripts, iframes, objects, SVG animation…): stylesheets can restyle the
+ * whole page, and forms could post anywhere.
+ */
+const FORBID_TAGS = ["style", "form", "template", "noscript", "link", "meta", "base"]
 /** Attributes that carry a URL the browser may navigate to or load. */
 const URL_ATTRS = new Set(["href", "src", "xlink:href", "action", "formaction", "poster", "background", "data", "srcset", "ping", "lowsrc", "dynsrc"])
 const SAFE_URL = /^(?:https?:|mailto:|tel:|#|\/|\.|\?|[^:]*$)/i
 const SAFE_DATA_IMG = /^data:image\/(?:png|gif|jpe?g|webp|bmp);/i
 
 /**
- * Browsers ignore ASCII control characters and whitespace anywhere in a URL
- * scheme ("java\tscript:" runs as "javascript:"), so strip them before testing.
+ * Petal's URL policy: http(s), mailto, tel, relative and fragment links, plus
+ * inline raster images in src. Browsers ignore ASCII control characters and
+ * whitespace anywhere in a URL scheme ("java\tscript:" runs as
+ * "javascript:"), so they're stripped before testing.
  */
-function isSafeUrl(value: string, attr: string): boolean {
+export function isSafeUrl(value: string, attr: string): boolean {
   const v = value.replace(/[\u0000-\u0020\u007f-\u00a0\u1680\u180e\u2000-\u2029\u205f\u3000\ufeff]/g, "")
   if (attr === "srcset") return v.split(",").every((part) => isSafeUrl(part.trim().split(" ")[0] ?? "", "src"))
   if (SAFE_URL.test(v)) return true
   return attr === "src" && SAFE_DATA_IMG.test(v)
 }
 
+let purifier: DOMPurifyI | null = null
+
+/** A DOMPurify instance of our own (hooks are per instance), with the URL policy as a hook. */
+function getPurifier(): DOMPurifyI | null {
+  if (purifier) return purifier
+  const p = DOMPurify(window)
+  if (!p.isSupported) return null
+  p.addHook("uponSanitizeAttribute", (_node, data) => {
+    const name = data.attrName.toLowerCase()
+    if ((URL_ATTRS.has(name) || name.endsWith(":href")) && !isSafeUrl(data.attrValue, name)) data.keepAttr = false
+    if (name === "style" && /expression\s*\(|url\s*\(\s*['"]?\s*javascript:/i.test(data.attrValue)) data.keepAttr = false
+  })
+  p.addHook("afterSanitizeAttributes", (node) => {
+    if (node.getAttribute("target") === "_blank") node.setAttribute("rel", "noopener noreferrer")
+  })
+  purifier = p
+  return p
+}
+
+/**
+ * HTML from Frappe (msgprint, intros, headlines) made safe to render:
+ * DOMPurify with HTML and SVG (no MathML), the extra forbidden tags above,
+ * `target` kept for Desk's links, and Petal's URL policy.
+ */
 export function sanitizeHtml(html: string): string {
-  if (typeof window === "undefined" || typeof DOMParser === "undefined") return html.replace(/<[^>]*>/g, "")
-  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html")
-  const root = doc.body.firstElementChild
-  if (!root) return ""
-  const walk = (el: Element) => {
-    for (const child of Array.from(el.children)) {
-      const tag = child.localName.toLowerCase()
-      if (DROP.has(tag)) { child.remove(); continue }
-      for (const attr of Array.from(child.attributes)) {
-        const name = attr.name.toLowerCase()
-        if (name.startsWith("on") || (name === "style" && /expression\s*\(|url\s*\(\s*['"]?\s*javascript:/i.test(attr.value))) {
-          child.removeAttribute(attr.name)
-        } else if ((URL_ATTRS.has(name) || name.endsWith(":href")) && !isSafeUrl(attr.value, name)) {
-          child.removeAttribute(attr.name)
-        }
-      }
-      walk(child)
-    }
-  }
-  walk(root)
-  return root.innerHTML
+  // Server render: no DOM to sanitize with, so no markup at all.
+  if (typeof window === "undefined") return html.replace(/<[^>]*>/g, "")
+  const p = getPurifier()
+  if (!p) return html.replace(/<[^>]*>/g, "")
+  return p.sanitize(html, {
+    USE_PROFILES: { html: true, svg: true },
+    FORBID_TAGS,
+    ADD_ATTR: ["target"],
+  })
 }
 
 export function FrappeHtml({ html, className }: { html: string; className?: string }) {
