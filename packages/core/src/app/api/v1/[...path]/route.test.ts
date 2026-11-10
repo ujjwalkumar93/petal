@@ -330,3 +330,134 @@ describe("API proxy — tenants", () => {
     expect(calls).toHaveLength(0)
   })
 })
+
+describe("API proxy — forwarded headers (#13, #14)", () => {
+  const sentHeaders = () => calls[0]!.init.headers as Record<string, string>
+
+  it("drops every client-sent X-Forwarded-* header when no proxy is trusted", async () => {
+    await GET(new NextRequest("http://petal.test/api/v1/doc/ToDo", {
+      headers: { "x-forwarded-for": "6.6.6.6", "x-forwarded-host": "victim.example", "x-real-ip": "6.6.6.6", forwarded: "for=6.6.6.6", "x-forwarded-proto": "https" },
+    }), ctx("doc/ToDo"))
+    const h = sentHeaders()
+    for (const k of ["x-forwarded-for", "x-forwarded-host", "x-real-ip", "forwarded", "x-forwarded-proto"]) expect(h[k]).toBeUndefined()
+  })
+
+  it("sends Frappe only the client address the trusted proxy saw", async () => {
+    vi.stubEnv("PETAL_TRUST_PROXY", "1")
+    await GET(new NextRequest("http://petal.test/api/v1/doc/ToDo", {
+      headers: { "x-forwarded-for": "6.6.6.6, 203.0.113.7", "x-forwarded-proto": "https", "x-real-ip": "6.6.6.6" },
+    }), ctx("doc/ToDo"))
+    expect(sentHeaders()["x-forwarded-for"]).toBe("203.0.113.7")
+    expect(sentHeaders()["x-forwarded-proto"]).toBe("https")
+    expect(sentHeaders()["x-real-ip"]).toBeUndefined()
+  })
+})
+
+describe("API proxy — body size limit (#14)", () => {
+  it("answers 413 from Content-Length without contacting Frappe", async () => {
+    vi.stubEnv("PETAL_MAX_BODY_MB", "1")
+    const res = await POST(new NextRequest("http://petal.test/api/v1/upload", {
+      method: "POST", body: new Uint8Array(10), headers: { "content-length": String(2 * 1024 * 1024) },
+    }), ctx("upload"))
+    expect(res.status).toBe(413)
+    expect(calls).toHaveLength(0)
+  })
+
+  it("answers 413 when a body without Content-Length grows past the limit", async () => {
+    vi.stubEnv("PETAL_MAX_BODY_MB", "1")
+    upstream = () => new Response("{}")
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
+      calls.push({ url, init })
+      await new Response(init.body as BodyInit).arrayBuffer() // Frappe reads the upload
+      return upstream()
+    }))
+    const chunk = new Uint8Array(256 * 1024)
+    let sent = 0
+    const body = new ReadableStream<Uint8Array>({
+      pull(c) { if (sent++ < 8) c.enqueue(chunk); else c.close() }, // 2 MiB in total
+    })
+    const res = await POST(new NextRequest(new Request("http://petal.test/api/v1/upload", { method: "POST", body, duplex: "half" } as RequestInit)), ctx("upload"))
+    expect(res.status).toBe(413)
+  })
+
+  it("passes bodies under the limit", async () => {
+    vi.stubEnv("PETAL_MAX_BODY_MB", "1")
+    const res = await POST(new NextRequest("http://petal.test/api/v1/upload", { method: "POST", body: new Uint8Array(1000) }), ctx("upload"))
+    expect(res.status).toBe(200)
+    expect((await bodyBytes(calls[0]!.init.body)).length).toBe(1000)
+  })
+})
+
+describe("API proxy — timeouts and aborts (#14)", () => {
+  /** An upstream that never answers until its request is aborted. */
+  function hangingUpstream() {
+    vi.stubGlobal("fetch", vi.fn((url: string, init: RequestInit) => {
+      calls.push({ url, init })
+      return new Promise<Response>((_, reject) => {
+        init.signal?.addEventListener("abort", () => reject(init.signal!.reason), { once: true })
+      })
+    }))
+  }
+
+  it("answers 504 when Frappe doesn't respond in time", async () => {
+    vi.stubEnv("PETAL_UPSTREAM_TIMEOUT_MS", "30")
+    hangingUpstream()
+    const res = await GET(new NextRequest("http://petal.test/api/v1/doc/ToDo"), ctx("doc/ToDo"))
+    expect(res.status).toBe(504)
+    expect(JSON.stringify(await res.json())).not.toContain("backend.internal")
+  })
+
+  it("cancels the upstream request when the browser goes away", async () => {
+    hangingUpstream()
+    const browser = new AbortController()
+    const pending = GET(new NextRequest("http://petal.test/api/v1/doc/ToDo", { signal: browser.signal }), ctx("doc/ToDo"))
+    await vi.waitFor(() => expect(calls).toHaveLength(1))
+    browser.abort()
+    await pending.catch(() => {})
+    expect(calls[0]!.init.signal?.aborted).toBe(true)
+  })
+})
+
+describe("API proxy — streaming (#14)", () => {
+  it("streams the response: the first bytes reach the browser before Frappe finishes", async () => {
+    const enc = new TextEncoder()
+    upstream = () => new Response(new ReadableStream<Uint8Array>({
+      start(c) { c.enqueue(enc.encode("first chunk")) }, // never closes
+    }), { status: 200, headers: { "content-type": "application/pdf" } })
+
+    const res = await GET(new NextRequest("http://petal.test/api/v1/files/big.pdf"), ctx("files/big.pdf"))
+    const reader = res.body!.getReader()
+    const first = await Promise.race([
+      reader.read(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("response was buffered")), 500)),
+    ])
+    expect(new TextDecoder().decode(first.value)).toBe("first chunk")
+    await reader.cancel()
+  })
+
+  it("streams the request body upstream instead of buffering it", async () => {
+    await POST(new NextRequest("http://petal.test/api/v1/upload", { method: "POST", body: new Uint8Array([1, 2, 3]) }), ctx("upload"))
+    const init = calls[0]!.init as RequestInit & { duplex?: string }
+    expect(init.body).toBeInstanceOf(ReadableStream)
+    expect(init.duplex).toBe("half")
+    expect(await bodyBytes(init.body)).toEqual(new Uint8Array([1, 2, 3]))
+  })
+})
+
+describe("API proxy — hop-by-hop headers", () => {
+  it("doesn't forward Expect and other per-connection headers (fetch refuses Expect)", async () => {
+    await POST(new NextRequest("http://petal.test/api/v1/upload", {
+      method: "POST", body: new Uint8Array(4),
+      headers: { expect: "100-continue", "keep-alive": "timeout=5", upgrade: "h2c", te: "trailers", trailer: "x", "proxy-connection": "keep-alive", cookie: "sid=1" },
+    }), ctx("upload"))
+    const sent = calls[0]!.init.headers as Record<string, string>
+    for (const k of ["expect", "keep-alive", "upgrade", "te", "trailer", "proxy-connection"]) expect(sent[k]).toBeUndefined()
+    expect(sent.cookie).toBe("sid=1")
+  })
+
+  it("marks the guest probe's answer nosniff like every proxied response", async () => {
+    upstream = () => new Response("{}", { status: 403 })
+    const res = await GET(new NextRequest("http://petal.test/api/v1/auth/me"), ctx("auth/me"))
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff")
+  })
+})

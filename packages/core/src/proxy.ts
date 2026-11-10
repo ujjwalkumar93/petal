@@ -102,5 +102,12 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    // Not the API proxy: Next buffers the body of every request a proxy runs
+    // on (and silently cuts it off at 10 MB), which would break streaming and
+    // truncate uploads. The route answers unknown tenants itself.
+    "/((?!_next/static|_next/image|favicon.ico|api/v1/).*)",
+    // …except the print preview, which needs its own frameable CSP.
+    "/api/v1/printview",
+  ],
 }
