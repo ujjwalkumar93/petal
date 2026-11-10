@@ -7,14 +7,15 @@ import { safeInternalPath } from "@/lib/nav/safe-path"
 /**
  * Forget everything the previous user's session left in this tab: FrappeClient's
  * response cache and CSRF token, React Query's cache, the cached workspace
- * sidebar and the persisted user. Used on logout and when the session expires,
- * so the next person to sign in never sees the last one's data.
+ * sidebar (petal:sidebar) and the store's per-user state (user, sidebar items,
+ * setup check). Used on logout and when the session expires, so the next person
+ * to sign in on this tab never sees the last one's data.
  */
-export function clearClientSession(queryClient?: QueryClient): void {
+export function resetSession(queryClient?: QueryClient): void {
   getFrappeClient().resetSession()
   queryClient?.clear()
   clearSidebarCache()
-  usePetalStore.getState().setUser(null)
+  usePetalStore.getState().resetUserState()
 }
 
 /** Login URL that returns the user to `currentPath` afterwards (read back with loginRedirectTarget). */

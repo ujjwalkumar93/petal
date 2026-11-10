@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /** Session expiry: a stored user is re-verified, and 401/403s only log out when the backend says Guest. */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { cleanup, render, waitFor } from "@testing-library/react"
+import { act, cleanup, render, waitFor } from "@testing-library/react"
 
 let pathname = "/form/Item/ITEM-1"
 const replace = vi.fn((p: string) => { pathname = p })
 vi.mock("next/navigation", () => ({ usePathname: () => pathname, useRouter: () => ({ replace, push: replace }) }))
-vi.mock("@/lib/sidebar/frappe-sidebar", () => ({ fetchFrappeSidebarItems: async () => [], clearSidebarCache: vi.fn() }))
+let workspaceSidebar: Array<{ label: string; path: string }> = []
+vi.mock("@/lib/sidebar/frappe-sidebar", () => ({ fetchFrappeSidebarItems: async () => workspaceSidebar, clearSidebarCache: vi.fn() }))
 vi.mock("@/components/shell/Sidebar", () => ({ Sidebar: () => null }))
 vi.mock("@/components/shell/Navbar", () => ({ Navbar: () => null }))
 
@@ -37,6 +38,7 @@ beforeEach(async () => {
   ;(globalThis as any).fetch = vi.fn(async () => ({ json: async () => ({ apps: [] }) }))
   ;(globalThis as any).EventSource = class { addEventListener() {} close() {} }
   pathname = "/form/Item/ITEM-1"
+  workspaceSidebar = []
   replace.mockClear()
   client.resetSession.mockClear()
   client.getSessionUser.mockReset()
@@ -86,6 +88,20 @@ describe("session expiry", () => {
     authListener!(401)
     await waitFor(() => expect(store.getState().authStatus).toBe("unauthenticated"))
     expect(client.resetSession).toHaveBeenCalled()
+  })
+
+  it("does not bring the previous user's workspace sidebar back after expiry", async () => {
+    workspaceSidebar = [{ label: "Payroll", path: "/workspace/Payroll" }]
+    client.getSessionUser.mockResolvedValueOnce("Administrator").mockResolvedValue("Guest")
+    const store = await renderShell()
+    await waitFor(() => expect(store.getState().sidebarItems.map((i) => i.label)).toEqual(["Payroll"]))
+
+    authListener!(401)
+    await waitFor(() => expect(store.getState().authStatus).toBe("unauthenticated"))
+    // Anything that re-merges the sidebar (here: app hooks arriving) must not restore it.
+    act(() => store.getState().setHooks({}))
+
+    expect(store.getState().sidebarItems).toEqual([])
   })
 
   it("does not sign out when the session check itself fails (backend offline)", async () => {

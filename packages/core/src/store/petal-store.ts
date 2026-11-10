@@ -48,7 +48,10 @@ interface SetupSlice {
   setSetupState: (state: SetupState) => void
 }
 
-type PetalState = AuthSlice & HooksSlice & ThemeSlice & UISlice & SettingsSlice & SetupSlice
+type PetalState = AuthSlice & HooksSlice & ThemeSlice & UISlice & SettingsSlice & SetupSlice & {
+  /** Drop everything that belongs to the signed-in user (see resetSession). Theme and layout prefs stay. */
+  resetUserState: () => void
+}
 
 function createAuthSlice(set: (fn: (s: PetalState) => Partial<PetalState>) => void): AuthSlice {
   return {
@@ -113,6 +116,8 @@ export const usePetalStore = create<PetalState>()(
       setUser: (user) => set((s) => (
         s.user?.name === user?.name ? { user } : { user, setupState: "unknown" }
       )),
+      // Sidebar items come from the user's permitted workspaces.
+      resetUserState: () => set(() => ({ user: null, setupState: "unknown", sidebarItems: [] })),
     }),
     {
       name: "petal-store",

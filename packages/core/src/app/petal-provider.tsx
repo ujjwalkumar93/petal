@@ -17,7 +17,7 @@ import dynamic from "next/dynamic"
 // Dialogs/messages for the Frappe runtime; loaded only when an app turns it on.
 const CompatHost = dynamic(() => import("@/components/compat/CompatHost").then((m) => m.CompatHost), { ssr: false })
 import { fetchSetupStatus, isSystemManager } from "@/lib/setup/setup-wizard"
-import { clearClientSession, loginPathFor } from "@/lib/auth/session"
+import { loginPathFor, resetSession } from "@/lib/auth/session"
 
 const SETUP_PATH = "/setup-wizard"
 
@@ -43,13 +43,18 @@ export function PetalProvider({ children }: { children: React.ReactNode }) {
   // Every FrappeClient request — boot, settings, and page data alike — is held by
   // client.waitFor() until track 1 has applied the apps' client config.
   const [appsLoaded, setAppsLoaded] = useState(false)
-  const [frappeSidebar, setFrappeSidebar] = useState<import("@petal/sdk").SidebarItem[] | null>(null)
+  // Workspace sidebar, tagged with the user it was fetched for: after a logout or
+  // expiry it must not resurface for the next user (or the login page).
+  const [fetchedSidebar, setFetchedSidebar] = useState<{ user: string; items: import("@petal/sdk").SidebarItem[] } | null>(null)
+  const frappeSidebar = fetchedSidebar && authStatus === "authenticated" && fetchedSidebar.user === user?.name
+    ? fetchedSidebar.items
+    : null
 
   // Session gone (expired, or signed out elsewhere): drop every cached trace of
   // it and let the redirect effect below send the user to /login?redirect=….
   function expireSession() {
     if (usePetalStore.getState().authStatus !== "authenticated") return
-    clearClientSession(queryClient)
+    resetSession(queryClient)
     setAuthStatus("unauthenticated")
     toast.warning("Your session has expired", "Please sign in again.")
   }
@@ -137,7 +142,8 @@ export function PetalProvider({ children }: { children: React.ReactNode }) {
   // Sidebar uses plain fetch (no FrappeClient overrides), so it can start right after auth.
   useEffect(() => {
     if (authStatus !== "authenticated") return
-    void fetchFrappeSidebarItems().then(setFrappeSidebar)
+    const forUser = usePetalStore.getState().user?.name ?? ""
+    void fetchFrappeSidebarItems().then((items) => setFetchedSidebar({ user: forUser, items }))
   }, [authStatus])
 
   // Settings go through FrappeClient (held by client.waitFor until app config is applied).

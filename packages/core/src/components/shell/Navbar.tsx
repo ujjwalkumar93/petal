@@ -11,7 +11,7 @@ import { GlobalSearch } from "@/components/shell/GlobalSearch"
 import { NotificationCenter } from "@/components/shell/NotificationCenter"
 import type { NavbarItem } from "@petal/sdk"
 import { confirmLeave } from "@/lib/nav/leave-guard"
-import { clearClientSession } from "@/lib/auth/session"
+import { resetSession } from "@/lib/auth/session"
 import { useQueryClient } from "@tanstack/react-query"
 
 function SafeLazyComponent({ item }: { item: NavbarItem }) {
@@ -42,7 +42,7 @@ export function Navbar() {
     setLoggingOut(true)
     const result = await authService.logout()
     if (result.success) {
-      clearClientSession(queryClient)
+      resetSession(queryClient)
       setAuthStatus("unauthenticated")
       router.replace(result.redirectTo)
     } else {

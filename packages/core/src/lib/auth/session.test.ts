@@ -1,9 +1,38 @@
 import { describe, expect, it, vi } from "vitest"
 
-vi.mock("@/hooks/useFrappe", () => ({ getFrappeClient: () => ({ resetSession: vi.fn() }) }))
-vi.mock("@/lib/sidebar/frappe-sidebar", () => ({ clearSidebarCache: vi.fn() }))
+const client = { resetSession: vi.fn() }
+const clearSidebarCache = vi.fn()
+vi.mock("@/hooks/useFrappe", () => ({ getFrappeClient: () => client }))
+vi.mock("@/lib/sidebar/frappe-sidebar", () => ({ clearSidebarCache: () => clearSidebarCache() }))
 
-import { loginPathFor, loginRedirectTarget } from "./session"
+import { QueryClient } from "@tanstack/react-query"
+import { loginPathFor, loginRedirectTarget, resetSession } from "./session"
+import { usePetalStore } from "@/store/petal-store"
+
+describe("resetSession", () => {
+  it("forgets every per-user cache layer", () => {
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(["doc", "Salary Slip", "SAL-1"], { net_pay: 1000 })
+    usePetalStore.setState({
+      user: { name: "a@example.com", email: "a@example.com", full_name: "A", first_name: "A", username: "a", user_type: "System User", roles: ["HR Manager"] },
+      authStatus: "authenticated",
+      setupState: "complete",
+      sidebarItems: [{ label: "Payroll", path: "/workspace/Payroll" }],
+      themeName: "petal" as never,
+    })
+
+    resetSession(queryClient)
+
+    expect(client.resetSession).toHaveBeenCalledOnce()     // GET cache + CSRF token
+    expect(clearSidebarCache).toHaveBeenCalledOnce()       // petal:sidebar in sessionStorage
+    expect(queryClient.getQueryData(["doc", "Salary Slip", "SAL-1"])).toBeUndefined()
+    const s = usePetalStore.getState()
+    expect(s.user).toBeNull()
+    expect(s.sidebarItems).toEqual([])                     // previous user's workspaces
+    expect(s.setupState).toBe("unknown")
+    expect(s.themeName).toBe("petal")                      // per-browser preference survives
+  })
+})
 
 describe("loginPathFor", () => {
   it("sends the user back to the interrupted page via ?redirect=", () => {
