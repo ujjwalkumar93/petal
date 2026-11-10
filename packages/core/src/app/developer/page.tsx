@@ -51,9 +51,9 @@ export default function DeveloperPage() {
               <span className="block font-medium text-foreground">Installed Apps</span>
               <span className="block text-sm text-muted-foreground">Custom apps loaded into this shell</span>
             </Link>
-            {process.env.NEXT_PUBLIC_FRAPPE_BACKEND_URL && (
+            {process.env.NEXT_PUBLIC_PETAL_DESK_URL && (
               <a
-                href={process.env.NEXT_PUBLIC_FRAPPE_BACKEND_URL}
+                href={process.env.NEXT_PUBLIC_PETAL_DESK_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block p-3 bg-accent/40 rounded-lg hover:bg-accent transition-colors"

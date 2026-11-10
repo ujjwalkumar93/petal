@@ -70,7 +70,8 @@ export function ApiPlayground() {
 
   const input = "w-full h-9 rounded-lg border border-border bg-background px-3 text-sm font-mono"
   const area = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono"
-  const backend = process.env.NEXT_PUBLIC_FRAPPE_BACKEND_URL ?? "https://your-site"
+  // The public Desk URL, if this deployment publishes one; the backend's own address never reaches the browser.
+  const backend = process.env.NEXT_PUBLIC_PETAL_DESK_URL ?? "https://your-site"
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
