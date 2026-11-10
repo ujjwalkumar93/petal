@@ -47,6 +47,11 @@ function readCache(): SidebarItem[] | null {
   }
 }
 
+/** Drop the cached workspace sidebar — it belongs to the user who was signed in. */
+export function clearSidebarCache(): void {
+  try { sessionStorage.removeItem(CACHE_KEY) } catch { /* storage unavailable */ }
+}
+
 function writeCache(items: SidebarItem[]): void {
   try {
     sessionStorage.setItem(CACHE_KEY, JSON.stringify({ items, expiresAt: Date.now() + CACHE_TTL_MS }))

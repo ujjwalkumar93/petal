@@ -3,6 +3,7 @@ import { Suspense, lazy, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { usePetalStore } from "@/store/petal-store"
 import { authService } from "@/lib/auth/auth-service"
+import { safeInternalPath } from "@/lib/nav/safe-path"
 
 function LoginForm() {
   const router = useRouter()
@@ -26,7 +27,9 @@ function LoginForm() {
     if (result.success) {
       setUser(result.user)
       setAuthStatus("authenticated")
-      router.replace(result.redirectTo)
+      // Back to where an expired session interrupted the user (same-origin paths only).
+      const next = safeInternalPath(new URLSearchParams(window.location.search).get("next"))
+      router.replace(next ?? result.redirectTo)
     } else {
       setError(result.message)
       setLoading(false)

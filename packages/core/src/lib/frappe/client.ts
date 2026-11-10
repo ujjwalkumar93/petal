@@ -29,6 +29,7 @@ export class FrappeClient {
   private csrfFetchPromise: Promise<void> | null = null
   /** Requests wait on this before sending, so config applied later (app overrides) still covers them. */
   private gate: Promise<unknown> | null = null
+  private authFailureListeners = new Set<(status: number) => void>()
 
   constructor(baseUrl: string, config?: FrappeClientConfig) {
     this.baseUrl = baseUrl.replace(/\/$/, "")
@@ -48,6 +49,45 @@ export class FrappeClient {
     const settled = ready.then(() => undefined, () => undefined)
     this.gate = settled
     void settled.then(() => { if (this.gate === settled) this.gate = null })
+  }
+
+  /**
+   * Called with the status whenever the backend answers 401/403. That covers
+   * both "not permitted" and "session expired" — listeners decide which by
+   * probing getSessionUser(). Login attempts are excluded (401 = bad password).
+   */
+  onAuthFailure(listener: (status: number) => void): () => void {
+    this.authFailureListeners.add(listener)
+    return () => { this.authFailureListeners.delete(listener) }
+  }
+
+  private reportStatus(status: number, path: string): void {
+    if (status !== 401 && status !== 403) return
+    if (path.startsWith(FrappeAPI.ENDPOINTS.AUTH.LOGIN)) return
+    for (const listener of this.authFailureListeners) {
+      try { listener(status) } catch (e) { console.error("[Petal] auth failure listener threw:", e) }
+    }
+  }
+
+  /**
+   * The signed-in user's name, or "Guest", straight from the backend — never
+   * cached, so it reflects an expired session immediately. Throws on network errors.
+   */
+  async getSessionUser(): Promise<string> {
+    const res = await fetch(`${this.baseUrl}${FrappeAPI.ENDPOINTS.AUTH.GET_LOGGED_IN_USER}`, {
+      credentials: "include", cache: "no-store", headers: { Accept: "application/json" },
+    })
+    if (!res.ok) throw new Error(`Session check failed (${res.status})`)
+    const json = (await res.json()) as { message?: unknown }
+    return typeof json.message === "string" && json.message ? json.message : "Guest"
+  }
+
+  /** Forget everything tied to the current session: cached responses, in-flight reads and the CSRF token. */
+  resetSession(): void {
+    this.cache.clear()
+    this.inflight.clear()
+    this.csrfToken = null
+    this.csrfFetchPromise = null
   }
 
   /** Remove all cache entries whose key contains `pattern`. */
@@ -110,6 +150,7 @@ export class FrappeClient {
 
     const res = await fetch(`${this.baseUrl}${finalPath}`, fetchOptions)
     if (!res.ok) {
+      this.reportStatus(res.status, path)
       let msg = `${res.status} ${res.statusText} (${path})`
       try {
         const errBody = await res.json() as Record<string, unknown>
@@ -190,6 +231,7 @@ export class FrappeClient {
     if (this.config.beforeRequest) requestOptions = await this.config.beforeRequest(requestOptions)
     const { path, ...fetchOptions } = requestOptions
     const res = await fetch(`${this.baseUrl}${path}`, fetchOptions)
+    this.reportStatus(res.status, path)
     let data: Record<string, unknown> | null = null
     try { data = (await res.json()) as Record<string, unknown> } catch { data = null }
     if (data && res.ok && this.config.afterRequest) data = (await this.config.afterRequest(data)) as Record<string, unknown>
@@ -232,7 +274,8 @@ export class FrappeClient {
   }
 
   async login(usr: string, pwd: string): Promise<void> {
-    this.csrfToken = null
+    // A different user may sign in on this tab: drop the previous session's cache too.
+    this.resetSession()
     await this.request(FrappeAPI.ENDPOINTS.AUTH.LOGIN, {
       method: "POST",
       body: JSON.stringify({ usr, pwd }),
@@ -242,6 +285,7 @@ export class FrappeClient {
 
   async logout(): Promise<void> {
     await this.request(FrappeAPI.ENDPOINTS.AUTH.LOGOUT, { method: "POST" })
+    this.resetSession()
   }
 
   async getLoggedInUser(): Promise<FrappeUser> {
@@ -423,6 +467,7 @@ export class FrappeClient {
     })
 
     if (!res.ok) {
+      this.reportStatus(res.status, "/upload")
       throw new Error(`Upload failed: ${res.status} ${res.statusText}`)
     }
 

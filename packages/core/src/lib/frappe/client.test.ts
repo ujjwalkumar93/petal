@@ -202,3 +202,60 @@ describe("waitFor gate", () => {
     await expect(c.callMethod("a.b")).resolves.toBe(2)
   })
 })
+
+describe("FrappeClient session handling", () => {
+  it("reports 401/403 to auth-failure listeners, but not a failed login", async () => {
+    const c = new FrappeClient("/api/v1")
+    const seen: number[] = []
+    c.onAuthFailure((s) => seen.push(s))
+    responses.push(json({ exc_type: "PermissionError" }, 403), json({ message: "Invalid login" }, 401), json({}, 500))
+
+    await expect(c.getDoc("Item", "I-1")).rejects.toThrow()
+    await expect(c.login("a@b.c", "wrong")).rejects.toThrow()
+    await expect(c.getDoc("Item", "I-2")).rejects.toThrow()
+
+    expect(seen).toEqual([403])
+  })
+
+  it("stops notifying after unsubscribe", async () => {
+    const c = new FrappeClient("/api/v1")
+    const listener = vi.fn()
+    c.onAuthFailure(listener)()
+    responses.push(json({}, 403))
+
+    await expect(c.getDoc("Item", "I-1")).rejects.toThrow()
+    expect(listener).not.toHaveBeenCalled()
+  })
+
+  it("getSessionUser bypasses the response cache", async () => {
+    const c = new FrappeClient("/api/v1")
+    responses.push(json({ message: "Administrator" }), json({ message: "Guest" }))
+
+    expect(await c.getSessionUser()).toBe("Administrator")
+    expect(await c.getSessionUser()).toBe("Guest")
+    expect(calls[0]!.init.cache).toBe("no-store")
+  })
+
+  it("resetSession drops cached responses so the next user refetches", async () => {
+    const c = new FrappeClient("/api/v1")
+    responses.push(json({ data: { name: "I-1", owner: "alice" } }), json({ data: { name: "I-1", owner: "bob-view" } }))
+
+    await c.getDoc("Item", "I-1")
+    await c.getDoc("Item", "I-1") // served from cache
+    expect(calls).toHaveLength(1)
+
+    c.resetSession()
+    expect(await c.getDoc("Item", "I-1")).toMatchObject({ owner: "bob-view" })
+    expect(calls).toHaveLength(2)
+  })
+
+  it("logout clears the cache", async () => {
+    const c = new FrappeClient("/api/v1")
+    responses.push(json({ data: { name: "I-1" } }), json({ message: "ok" }), json({ data: { name: "I-1" } }))
+
+    await c.getDoc("Item", "I-1")
+    await c.logout()
+    await c.getDoc("Item", "I-1")
+    expect(calls.map((x) => x.url)).toEqual(["/api/v1/doc/Item/I-1", "/api/v1/auth/logout", "/api/v1/doc/Item/I-1"])
+  })
+})

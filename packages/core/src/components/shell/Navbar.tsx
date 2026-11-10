@@ -8,6 +8,9 @@ import { MenuIcon, ProfileIcon, GearIcon, HelpIcon, AppearanceIcon, LogoutIcon, 
 import { GlobalSearch } from "@/components/shell/GlobalSearch"
 import { NotificationCenter } from "@/components/shell/NotificationCenter"
 import type { NavbarItem } from "@petal/sdk"
+import { confirmLeave } from "@/lib/nav/leave-guard"
+import { clearClientSession } from "@/lib/auth/session"
+import { useQueryClient } from "@tanstack/react-query"
 
 function SafeLazyComponent({ item }: { item: NavbarItem }) {
   const Component = useMemo(
@@ -40,7 +43,8 @@ function SafeLazyComponent({ item }: { item: NavbarItem }) {
 }
 
 export function Navbar() {
-  const { hooks, user, setUser, setAuthStatus, toggleSidebar } = usePetalStore()
+  const { hooks, user, setAuthStatus, toggleSidebar } = usePetalStore()
+  const queryClient = useQueryClient()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showThemePicker, setShowThemePicker] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -58,10 +62,11 @@ export function Navbar() {
   }, [showUserMenu])
 
   async function handleLogout() {
+    if (!confirmLeave()) return
     setLoggingOut(true)
     const result = await authService.logout()
     if (result.success) {
-      setUser(null)
+      clearClientSession(queryClient)
       setAuthStatus("unauthenticated")
       router.replace(result.redirectTo)
     } else {

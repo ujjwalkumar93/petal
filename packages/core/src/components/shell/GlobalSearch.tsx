@@ -1,5 +1,6 @@
 "use client"
 
+import { confirmLeave } from "@/lib/nav/leave-guard"
 import { useRouter } from "next/navigation"
 import { useFrappe } from "@/hooks/useFrappe"
 import { GlobalSearch as GlobalSearchUI } from "@petal/ui"
@@ -76,7 +77,7 @@ export function GlobalSearch() {
       onFetchDoctypes={fetchDoctypes}
       onFetchReports={fetchReports}
       onGlobalSearch={globalSearch}
-      onNavigate={(href) => router.push(href)}
+      onNavigate={(href) => { if (confirmLeave()) router.push(href) }}
     />
   )
 }

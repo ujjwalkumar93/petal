@@ -17,6 +17,7 @@ import dynamic from "next/dynamic"
 // Dialogs/messages for the Frappe runtime; loaded only when an app turns it on.
 const CompatHost = dynamic(() => import("@/components/compat/CompatHost").then((m) => m.CompatHost), { ssr: false })
 import { fetchSetupStatus, isSystemManager } from "@/lib/setup/setup-wizard"
+import { clearClientSession, loginPathFor } from "@/lib/auth/session"
 
 const SETUP_PATH = "/setup-wizard"
 
@@ -44,6 +45,15 @@ export function PetalProvider({ children }: { children: React.ReactNode }) {
   const [appsLoaded, setAppsLoaded] = useState(false)
   const [frappeSidebar, setFrappeSidebar] = useState<import("@petal/sdk").SidebarItem[] | null>(null)
 
+  // Session gone (expired, or signed out elsewhere): drop every cached trace of
+  // it and let the redirect effect below send the user to /login?next=….
+  function expireSession() {
+    if (usePetalStore.getState().authStatus !== "authenticated") return
+    clearClientSession(queryClient)
+    setAuthStatus("unauthenticated")
+    toast.warning("Your session has expired", "Please sign in again.")
+  }
+
   useEffect(() => {
     registerBuiltinIcons()
     const client = getFrappeClient()
@@ -66,7 +76,12 @@ export function PetalProvider({ children }: { children: React.ReactNode }) {
     void (async () => {
       try {
         if (user) {
+          // Paint the shell at once from the stored user, but confirm with the
+          // backend: the session may have expired while the tab was closed.
           setAuthStatus("authenticated")
+          void client.getSessionUser()
+            .then((name) => { if (name === "Guest") expireSession() })
+            .catch(() => { /* offline/backend down: keep the shell, requests will report it */ })
         } else {
           const freshUser = await client.getLoggedInUser()
           setUser(freshUser)
@@ -80,6 +95,22 @@ export function PetalProvider({ children }: { children: React.ReactNode }) {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setUser, setAuthStatus, setAppTheme, setSettings])
+
+  // A 401/403 means either "not permitted" or "signed out". Ask the backend
+  // which (uncached); only an actual Guest session sends the user to login.
+  useEffect(() => {
+    const client = getFrappeClient()
+    let probing = false
+    return client.onAuthFailure(() => {
+      if (probing || usePetalStore.getState().authStatus !== "authenticated") return
+      probing = true
+      void client.getSessionUser()
+        .then((name) => { if (name === "Guest") expireSession() })
+        .catch(() => {})
+        .finally(() => { probing = false })
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // First-run setup: once per session, ask Frappe whether the setup wizard has
   // run (same rule as frappe.is_setup_complete). Only System Managers can run it.
@@ -167,7 +198,7 @@ export function PetalProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (authStatus === "unauthenticated" && pathname !== "/login" && pathname !== "/petal-docs") {
-      router.replace("/login")
+      router.replace(loginPathFor(pathname + window.location.search))
     }
   }, [authStatus, pathname, router])
 

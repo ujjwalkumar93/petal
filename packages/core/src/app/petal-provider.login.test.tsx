@@ -12,6 +12,7 @@ vi.mock("@/components/shell/Navbar", () => ({ Navbar: () => null }))
 
 const client: any = {
   waitFor: vi.fn(), applyConfig: vi.fn(), initCSRF: async () => {}, invalidate: () => {},
+  onAuthFailure: () => () => {}, getSessionUser: async () => "Guest", resetSession: vi.fn(),
   getLoggedInUser: vi.fn(async () => { throw new Error("guest") }),
   getDoc: vi.fn(async (dt: string) => dt === "Installed Applications"
     ? { installed_applications: [{ app_name: "frappe", has_setup_wizard: 1, is_setup_complete: 1 }, { app_name: "erpnext", has_setup_wizard: 1, is_setup_complete: 1 }] }

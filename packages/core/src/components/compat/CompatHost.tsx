@@ -11,6 +11,7 @@ import { ChildTable, FieldInput, cn } from "@petal/ui"
 import type { ChildTableMeta } from "@petal/ui"
 import { uiStore, deskUrlToPath, type CompatDialog, type DialogField, type MsgEntry, type PickerEntry } from "@/lib/frappe-compat"
 import { setCompatNavigator } from "@/lib/frappe-compat/browser"
+import { confirmLeave } from "@/lib/nav/leave-guard"
 import { FrappeHtml, indicatorClass } from "./FrappeHtml"
 
 const w = () => (typeof window !== "undefined" ? (window as any) : ({} as any))
@@ -33,6 +34,9 @@ export function CompatHost() {
       const path = href.startsWith("/app") || href.startsWith("#") ? deskUrlToPath(href) : href.startsWith("/") ? href : null
       if (!path || a.target === "_blank") return
       e.preventDefault()
+      // Desk "#Form/…" links aren't real navigations, so useUnsavedChangesGuard's
+      // link check skips them; ask here. Path links were already confirmed there.
+      if (href.startsWith("#") && !confirmLeave()) return
       router.push(path)
     }
     document.addEventListener("click", onClick)
