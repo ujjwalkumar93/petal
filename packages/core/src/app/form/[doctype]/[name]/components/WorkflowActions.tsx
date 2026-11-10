@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useEffectEvent, useRef, useState } from "react"
 import { useFrappe } from "@/hooks/useFrappe"
 import type { WorkflowTransition } from "@/lib/frappe/client"
 
@@ -25,16 +25,19 @@ export function WorkflowActions({
   const state = doc[stateField] ? String(doc[stateField]) : null
   const modified = String(doc.modified ?? "")
 
+  // Reads the current doc, but only a change to its saved state re-queries,
+  // not every keystroke.
+  const fetchTransitions = useEffectEvent(() => frappe.getWorkflowTransitions(doc))
+  const docName = doc.name
+
   useEffect(() => {
-    if (!doc.name) return
+    if (!docName) return
     let cancelled = false
-    frappe.getWorkflowTransitions(doc)
+    fetchTransitions()
       .then((t) => { if (!cancelled) setTransitions(t) })
       .catch(() => { if (!cancelled) setTransitions([]) })
     return () => { cancelled = true }
-  // Re-query only when the saved state changes, not on every keystroke
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frappe, doc.name, state, modified])
+  }, [frappe, docName, state, modified])
 
   useEffect(() => {
     function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }

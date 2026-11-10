@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "dev": "tsc --watch",
     "clean": "rm -rf dist"

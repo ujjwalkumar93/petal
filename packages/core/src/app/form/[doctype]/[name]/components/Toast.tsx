@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useEffectEvent } from "react"
 
 export type Toast = { id: number; type: "success" | "error"; message: string }
 
@@ -41,15 +41,17 @@ const DISMISS_MS = 4500
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number) => void }) {
   const [visible, setVisible] = useState(false)
   const isSuccess = toast.type === "success"
+  // Each toast schedules its own dismissal once; a new onDismiss from the
+  // parent must not restart the timer.
+  const dismissLater = useEffectEvent(() => { setTimeout(() => onDismiss(toast.id), 350) })
 
   useEffect(() => {
     const show = setTimeout(() => setVisible(true), 10)
     const hide = setTimeout(() => {
       setVisible(false)
-      setTimeout(() => onDismiss(toast.id), 350)
+      dismissLater()
     }, DISMISS_MS)
     return () => { clearTimeout(show); clearTimeout(hide) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function dismiss() {

@@ -1,5 +1,5 @@
 "use client"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useEffectEvent, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useFrappe } from "@/hooks/useFrappe"
 import { usePetalStore } from "@/store/petal-store"
@@ -304,8 +304,6 @@ function ChartWidget({
   // Core fetch logic
   // -----------------------------------------------------------------------
 
-  useEffect(() => {console.log("filterDraft", filterDraft)}, [filterDraft])
-
   const fetchChart = useCallback(async (
     doc: ChartDoc,
     opts: {
@@ -476,7 +474,6 @@ function ChartWidget({
   // Pre-load filter field definitions (fieldtype / label / options) so the
   // filter dialog shows the right controls immediately — no loading flash.
   const loadFilterFieldDefs = useCallback(async (doc: ChartDoc) => {
-    console.log("[filterFieldDefs] called — chart_type:", doc.chart_type, "document_type:", doc.document_type, "report_name:", doc.report_name, "doc keys:", Object.keys(doc))
     if (doc.chart_type === "Report" && doc.report_name) {
       try {
         const reportDoc = await frappe.getDoc<FrappeDocument & Record<string, unknown>>(
@@ -528,13 +525,11 @@ function ChartWidget({
           }
         } catch { /* ignore */ }
       }
-      console.log("[filterFieldDefs] doctype:", doctype, "fieldNames:", [...fieldNames])
       if (fieldNames.size > 0) {
         try {
           const dtDoc = await frappe.getDoc<FrappeDocument & { fields: Array<Record<string, unknown>> }>(
             "DocType", doctype,
           )
-          console.log("[filterFieldDefs] dtDoc.fields sample:", dtDoc.fields?.slice(0, 5))
           const defs: Record<string, { label: string; fieldtype: string; options?: string }> = {}
           for (const field of dtDoc.fields ?? []) {
             const fn = field.fieldname as string | undefined
@@ -546,15 +541,15 @@ function ChartWidget({
               }
             }
           }
-          console.log("[filterFieldDefs] resolved defs:", defs)
           setFilterFieldDefs(defs)
         } catch (e) { console.error("[filterFieldDefs] fetch failed:", e); setFilterFieldDefs({}) }
       }
     }
   }, [frappe])
 
-  // Initial load
-  useEffect(() => {
+  // Initial load. An effect event: it uses the current helpers, but only a
+  // different chart reloads it.
+  const loadInitial = useEffectEvent(() => {
     let restoredFilters: Record<string, unknown> | null = null
     let restoredTi: string | undefined
     let restoredTs: string | undefined
@@ -584,8 +579,9 @@ function ChartWidget({
         setError(err instanceof Error ? err.message : "Could not load chart.")
         setLoading(false)
       })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.chart_name])
+  })
+  const chartName = item.chart_name
+  useEffect(() => { loadInitial() }, [chartName])
 
   // -----------------------------------------------------------------------
   // Action handlers

@@ -293,3 +293,143 @@ describe("FrappeClient path encoding (#19)", () => {
     expect(await c.getDoc("Sales Invoice", "INV/1")).toEqual({ v: 2 })
   })
 })
+
+describe("FrappeClient — cached method calls", () => {
+  it("caches callMethod only when asked, keyed by method and args", async () => {
+    const c = new FrappeClient("/api/v1")
+    responses.push(json({ message: "a" }), json({ message: "b" }), json({ message: "c" }))
+    const [x, y] = await Promise.all([
+      c.callMethod("m.one", { k: 1 }, { cache: true }),
+      c.callMethod("m.one", { k: 1 }, { cache: true }),
+    ])
+    expect([x, y]).toEqual(["a", "a"])
+    expect(await c.callMethod("m.one", { k: 1 }, { cache: true })).toBe("a")
+    expect(await c.callMethod("m.one", { k: 2 }, { cache: true })).toBe("b")
+    expect(await c.callMethod("m.one", { k: 1 })).toBe("c")
+    expect(calls).toHaveLength(3)
+
+    c.invalidate("exec:")
+    responses.push(json({ message: "d" }))
+    expect(await c.callMethod("m.one", { k: 1 }, { cache: true })).toBe("d")
+  })
+
+  it("comment, assignment and attachment helpers call Frappe's methods", async () => {
+    const c = new FrappeClient("/api/v1")
+    for (let i = 0; i < 5; i++) responses.push(json({ message: null }))
+    await c.addComment("ToDo", "T1", "<p>hi</p>", { email: "j@x.co", fullName: "Jane" })
+    await c.deleteComment("C-1")
+    await c.assign("ToDo", "T1", ["a@x.co", "b@x.co"])
+    await c.unassign("ToDo", "T1", "a@x.co")
+    await c.removeAttachment("ToDo", "T1", "F-1")
+    expect(calls.map((_, i) => header(i, "X-Method"))).toEqual([
+      "frappe.desk.form.utils.add_comment",
+      "frappe.client.delete",
+      "frappe.desk.form.assign_to.add",
+      "frappe.desk.form.assign_to.remove",
+      "frappe.desk.form.utils.remove_attach",
+    ])
+    expect(body(0)).toEqual({ reference_doctype: "ToDo", reference_name: "T1", content: "<p>hi</p>", comment_email: "j@x.co", comment_by: "Jane" })
+    expect(body(2)).toEqual({ doctype: "ToDo", name: "T1", assign_to: '["a@x.co","b@x.co"]' })
+    expect(body(4)).toEqual({ fid: "F-1", dt: "ToDo", dn: "T1" })
+  })
+})
+
+describe("FrappeClient — request hooks from apps", () => {
+  it("lets beforeRequest rewrite the request and afterRequest the response", async () => {
+    const c = new FrappeClient("/api/v1")
+    c.applyConfig({
+      beforeRequest: async (o) => ({ ...o, path: o.path.replace("/doc/", "/doc-v2/"), headers: { ...(o.headers as object), "X-App": "1" } }),
+      afterRequest: async (j) => ({ data: { ...(j as { data: object }).data, touched: true } }),
+    })
+    responses.push(json({ data: { name: "U1" } }))
+    expect(await c.getDoc("User", "U1")).toEqual({ name: "U1", touched: true })
+    expect(calls[0]!.url).toBe("/api/v1/doc-v2/User/U1")
+    expect(header(0, "X-App")).toBe("1")
+  })
+})
+
+describe("FrappeClient — error messages", () => {
+  it("uses the <summary> of an HTML server message when a DOM is available, else strips tags", async () => {
+    const c = new FrappeClient("/api/v1")
+    const msg = JSON.stringify([JSON.stringify({ message: "<details><summary>Not allowed</summary>Traceback…</details>" })])
+    responses.push(json({ _server_messages: msg }, 417))
+    // No DOM in this environment: tags are stripped.
+    await expect(c.getDoc("X", "1")).rejects.toThrow("Not allowed Traceback…")
+  })
+
+  it("keeps a plain-text message as is", async () => {
+    const c = new FrappeClient("/api/v1")
+    responses.push(json({ _server_messages: JSON.stringify([{ message: "Plain & simple" }]) }, 417))
+    await expect(c.getDoc("X", "1")).rejects.toThrow("Plain & simple")
+  })
+})
+
+describe("FrappeClient — raw calls and boot", () => {
+  it("rawCall returns Frappe's whole response and status without throwing", async () => {
+    const c = new FrappeClient("/api/v1")
+    responses.push(json({ message: "tok" }), json({ exc: "ValidationError", _server_messages: "[]" }, 417))
+    const r = await c.rawCall("erpnext.do_thing", { a: 1 })
+    expect(r).toEqual({ status: 417, data: { exc: "ValidationError", _server_messages: "[]" } })
+    expect(calls[1]!.url).toBe("/api/v1/exec")
+    expect(header(1, "X-Method")).toBe("erpnext.do_thing")
+    expect(header(1, "X-CSRF-Token")).toBe("tok")
+    expect(body(1)).toEqual({ a: 1 })
+  })
+
+  it("rawCall runs afterRequest only on success and tolerates a non-JSON body", async () => {
+    const c = new FrappeClient("/api/v1")
+    const after = vi.fn(async (j: unknown) => ({ ...(j as object), seen: true }))
+    c.applyConfig({ afterRequest: after })
+    responses.push(json({ message: "tok" }), json({ message: 1 }), () => new Response("<html>502</html>", { status: 502 }))
+    expect(await c.rawCall("m", {})).toEqual({ status: 200, data: { message: 1, seen: true } })
+    expect(await c.rawCall("m", {})).toEqual({ status: 502, data: null })
+    expect(after).toHaveBeenCalledTimes(1)
+  })
+
+  it("getBoot returns the boot object and explains failures", async () => {
+    const c = new FrappeClient("/api/v1")
+    responses.push(
+      json({ message: { user: { name: "jane" } } }),
+      json({ error: "x" }, 401),
+      json({ error: "x" }, 500),
+      json({ message: "not an object" }),
+    )
+    expect(await c.getBoot()).toEqual({ user: { name: "jane" } })
+    expect(calls[0]!.init.cache).toBe("no-store")
+    await expect(c.getBoot()).rejects.toThrow("Not logged in")
+    await expect(c.getBoot()).rejects.toThrow("Could not load the session (500)")
+    await expect(c.getBoot()).rejects.toThrow("Could not load the session")
+  })
+})
+
+describe("FrappeClient — uploads", () => {
+  const file = () => new File([new Uint8Array([0, 255, 1])], "a.bin", { type: "application/octet-stream" })
+
+  it("posts multipart form data with the CSRF token and returns the file URL", async () => {
+    const c = new FrappeClient("/api/v1")
+    responses.push(json({ message: "tok" }))
+    await c.initCSRF()
+    responses.push(json({ message: { file_url: "/private/files/a.bin" } }))
+
+    const url = await c.uploadFile(file(), { doctype: "ToDo", docname: "T1", fieldname: "attachment", is_private: 1 })
+
+    expect(url).toBe("/private/files/a.bin")
+    const { url: target, init } = calls[1]!
+    expect(target).toBe("/api/v1/upload")
+    expect(header(1, "X-CSRF-Token")).toBe("tok")
+    expect(header(1, "Content-Type")).toBeUndefined()
+    const form = init.body as FormData
+    expect(Object.fromEntries([...form.entries()].filter(([k]) => k !== "file"))).toEqual({ is_private: "1", doctype: "ToDo", docname: "T1", fieldname: "attachment" })
+    expect(new Uint8Array(await (form.get("file") as File).arrayBuffer())).toEqual(new Uint8Array([0, 255, 1]))
+  })
+
+  it("reports a failed upload, and one without a URL", async () => {
+    const c = new FrappeClient("/api/v1")
+    const onFail = vi.fn()
+    c.onAuthFailure(onFail)
+    responses.push(() => new Response("", { status: 403, statusText: "Forbidden" }), json({ message: {} }))
+    await expect(c.uploadFile(file())).rejects.toThrow("Upload failed: 403 Forbidden")
+    expect(onFail).toHaveBeenCalled()
+    await expect(c.uploadFile(file())).rejects.toThrow("no file URL")
+  })
+})
