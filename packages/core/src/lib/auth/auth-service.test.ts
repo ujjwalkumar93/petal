@@ -59,7 +59,7 @@ describe("authService.login", () => {
     expect(r).toEqual({ success: true, user, redirectTo: "/desk" })
     expect(client.login).toHaveBeenCalledWith("jane@example.com", "pw")
     expect(order).toEqual(["before", "login", "after1", "after2"])
-    expect(apps[1].hooks.overrides!.auth!.after_login).toHaveBeenCalledWith(user)
+    expect(apps[1]!.hooks.overrides!.auth!.after_login).toHaveBeenCalledWith(user)
   })
 
   it("is cancelled when a before_login hook returns false, without calling Frappe", async () => {

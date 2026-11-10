@@ -26,7 +26,7 @@ const ROWS = [
 
 let meta: Meta | null = TASK
 const client = {
-  callMethod: vi.fn(async (method: string) => {
+  callMethod: vi.fn(async (method: string, _args?: unknown) => {
     if (method === "frappe.desk.form.load.getdoctype") {
       if (!meta) throw new Error("403")
       return { docs: [meta] }
@@ -34,7 +34,7 @@ const client = {
     if (method === "frappe.client.get_count") return ROWS.length
     return {}
   }),
-  getList: vi.fn(async () => ROWS),
+  getList: vi.fn(async (_args?: unknown) => ROWS),
   saveDoc: vi.fn(async (d: Record<string, unknown>) => ({ ...d, name: "T-3" })),
   invalidate: vi.fn(),
   bulkAction: vi.fn(async () => []),
@@ -79,7 +79,7 @@ describe("List page", () => {
 
   it("opens a row's form, encoding its name", async () => {
     render(<ListPage />)
-    fireEvent.click((await screen.findAllByText("Ship it"))[0])
+    fireEvent.click((await screen.findAllByText("Ship it"))[0]!)
     expect(router.push).toHaveBeenCalledWith("/form/Task/T%2F2%23b")
   })
 

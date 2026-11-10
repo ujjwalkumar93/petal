@@ -199,7 +199,7 @@ describe("API proxy — request headers", () => {
       headers: { "x-csrf-token": "tok", connection: "keep-alive", cookie: "sid=abc" },
     }), ctx("doc/ToDo"))
 
-    const sent = calls[0].init.headers as Record<string, string>
+    const sent = calls[0]!.init.headers as Record<string, string>
     expect(sent["x-frappe-csrf-token"]).toBe("tok")
     expect(sent["x-csrf-token"]).toBeUndefined()
     expect(sent.connection).toBeUndefined()
@@ -213,14 +213,14 @@ describe("API proxy — request headers", () => {
     ["DELETE", DELETE],
   ] as const)("forwards %s with its method", async (method, handler) => {
     await handler(new NextRequest("http://petal.test/api/v1/doc/ToDo/T-1", { method, body: method === "DELETE" ? null : "{}" }), ctx("doc/ToDo/T-1"))
-    expect(calls[0].init.method).toBe(method)
-    expect(calls[0].url).toBe(`${BACKEND}/api/resource/ToDo/T-1`)
+    expect(calls[0]!.init.method).toBe(method)
+    expect(calls[0]!.url).toBe(`${BACKEND}/api/resource/ToDo/T-1`)
   })
 
   it("sends GET without a body", async () => {
     await GET(new NextRequest("http://petal.test/api/v1/doc/ToDo?limit=5"), ctx("doc/ToDo"))
-    expect(calls[0].init.body).toBeUndefined()
-    expect(calls[0].url).toBe(`${BACKEND}/api/resource/ToDo?limit=5`)
+    expect(calls[0]!.init.body).toBeUndefined()
+    expect(calls[0]!.url).toBe(`${BACKEND}/api/resource/ToDo?limit=5`)
   })
 })
 
@@ -229,7 +229,7 @@ describe("API proxy — print view", () => {
     upstream = () => new Response('<link href="/assets/print.css"><img src="/files/logo.png"></body>', { status: 200 })
     const res = await GET(new NextRequest("http://petal.test/api/v1/printview?doctype=ToDo&name=T-1"), ctx("printview"))
 
-    expect(calls[0].url).toBe(`${BACKEND}/printview?doctype=ToDo&name=T-1`)
+    expect(calls[0]!.url).toBe(`${BACKEND}/printview?doctype=ToDo&name=T-1`)
     expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8")
     const html = await res.text()
     expect(html).toContain('href="/api/v1/assets/print.css"')
@@ -248,8 +248,8 @@ describe("API proxy — CSRF token and boot", () => {
     upstream = () => new Response('<script>frappe.csrf_token = "abc123";</script>', { status: 200 })
     const res = await GET(new NextRequest("http://petal.test/api/v1/auth/csrf", { headers: { cookie: "sid=s1", "x-other": "1" } }), ctx("auth/csrf"))
 
-    expect(calls[0].url).toBe(`${BACKEND}/app`)
-    expect(calls[0].init.headers).toEqual({ cookie: "sid=s1", host: "backend.internal", accept: "text/html" })
+    expect(calls[0]!.url).toBe(`${BACKEND}/app`)
+    expect(calls[0]!.init.headers).toEqual({ cookie: "sid=s1", host: "backend.internal", accept: "text/html" })
     expect(await res.json()).toEqual({ message: "abc123" })
   })
 

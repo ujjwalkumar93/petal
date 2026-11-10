@@ -172,7 +172,7 @@ describe("Workspace page — charts", () => {
   it("uses the configured default company instead of guessing", async () => {
     usePetalStore.setState({ settings: { defaultCompany: "Beta Ltd", defaultFiscalYear: "2025" } })
     docs["Dashboard Chart"] = { R: { name: "R", chart_type: "Report", report_name: "Rep", filters_json: JSON.stringify({ filter_based_on: "Fiscal Year" }) } }
-    const run = vi.fn(() => ({ chart: { labels: ["a"], datasets: [{ name: "n", values: [1] }] } }))
+    const run = vi.fn((_a: Record<string, unknown>) => ({ chart: { labels: ["a"], datasets: [{ name: "n", values: [1] }] } }))
     calls["frappe.desk.query_report.run"] = run
     page = { ...empty, charts: { items: [chartItem("R")] } }
 

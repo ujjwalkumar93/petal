@@ -90,8 +90,8 @@ describe("GenericForm — new document", () => {
     await act(async () => { fireEvent.click(screen.getByTitle(/^Save/)) })
 
     await waitFor(() => expect(client.saveDoc).toHaveBeenCalledTimes(1))
-    expect(client.saveDoc.mock.calls[0][0]).toMatchObject({ doctype: "ToDo", description: "Buy milk", status: "Open" })
-    expect(client.saveDoc.mock.calls[0][0]).not.toHaveProperty("name")
+    expect(client.saveDoc.mock.calls[0]![0]).toMatchObject({ doctype: "ToDo", description: "Buy milk", status: "Open" })
+    expect(client.saveDoc.mock.calls[0]![0]).not.toHaveProperty("name")
     expect(router.replace).toHaveBeenCalledWith("/form/ToDo/TD-0001")
     expect(await screen.findByText("ToDo created")).toBeTruthy()
   })
