@@ -20,7 +20,22 @@ export interface PetalAppMeta {
    * apps: [{ name: "myapp", tailwindPrefix: "myapp-", url: "..." }]
    */
   tailwindPrefix?: string
+  /**
+   * Subresource Integrity hash of the bundle at `url` ("sha384-…", as from
+   * `openssl dgst -sha384 -binary petal.hooks.js | openssl base64 -A`).
+   * Browsers refuse to run a bundle that doesn't match. Not applied to
+   * `devUrl`. An app with a malformed value isn't loaded.
+   */
+  integrity?: string
+  /**
+   * Petal versions this app works with, as a semver range (e.g. ">=0.4 <1").
+   * An app whose range excludes the running Petal is reported on /apps and
+   * never loaded.
+   */
+  petalVersion?: string
   _hooks?: PetalHooks
+  /** Set by the server when this app can't be loaded (bad range, malformed integrity). */
+  _configError?: string
 }
 
 export interface PetalConfig {
