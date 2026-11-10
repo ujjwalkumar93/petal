@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query"
 import { getFrappeClient } from "@/hooks/useFrappe"
 import { clearSidebarCache } from "@/lib/sidebar/frappe-sidebar"
 import { usePetalStore } from "@/store/petal-store"
+import { safeInternalPath } from "@/lib/nav/safe-path"
 
 /**
  * Forget everything the previous user's session left in this tab: FrappeClient's
@@ -16,8 +17,13 @@ export function clearClientSession(queryClient?: QueryClient): void {
   usePetalStore.getState().setUser(null)
 }
 
-/** Login URL that returns the user to `currentPath` afterwards (see safeInternalPath on the login page). */
+/** Login URL that returns the user to `currentPath` afterwards (read back with loginRedirectTarget). */
 export function loginPathFor(currentPath: string): string {
   if (!currentPath || currentPath === "/" || currentPath.startsWith("/login")) return "/login"
-  return `/login?next=${encodeURIComponent(currentPath)}`
+  return `/login?redirect=${encodeURIComponent(currentPath)}`
+}
+
+/** Where the login page should go after signing in: the `redirect` param, if it is a same-origin path. */
+export function loginRedirectTarget(search: string): string | null {
+  return safeInternalPath(new URLSearchParams(search).get("redirect"))
 }

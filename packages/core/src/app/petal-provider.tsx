@@ -46,7 +46,7 @@ export function PetalProvider({ children }: { children: React.ReactNode }) {
   const [frappeSidebar, setFrappeSidebar] = useState<import("@petal/sdk").SidebarItem[] | null>(null)
 
   // Session gone (expired, or signed out elsewhere): drop every cached trace of
-  // it and let the redirect effect below send the user to /login?next=….
+  // it and let the redirect effect below send the user to /login?redirect=….
   function expireSession() {
     if (usePetalStore.getState().authStatus !== "authenticated") return
     clearClientSession(queryClient)

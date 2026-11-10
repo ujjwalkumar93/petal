@@ -55,7 +55,7 @@ describe("session expiry", () => {
     await waitFor(() => expect(store.getState().authStatus).toBe("unauthenticated"))
     expect(store.getState().user).toBeNull()
     expect(client.resetSession).toHaveBeenCalled()
-    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login?next=%2Fform%2FItem%2FITEM-1"))
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login?redirect=%2Fform%2FItem%2FITEM-1"))
   })
 
   it("keeps a stored user whose session is still valid", async () => {
