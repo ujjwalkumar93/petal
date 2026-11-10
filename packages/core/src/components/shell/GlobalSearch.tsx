@@ -1,7 +1,6 @@
 "use client"
 
-import { confirmLeave } from "@/lib/nav/leave-guard"
-import { useRouter } from "next/navigation"
+import { useGuardedRouter } from "@/hooks/useGuardedRouter"
 import { useFrappe } from "@/hooks/useFrappe"
 import { GlobalSearch as GlobalSearchUI } from "@petal/ui"
 import type { GlobalSearchNavItem } from "@petal/ui"
@@ -17,7 +16,7 @@ const NAV_ITEMS: GlobalSearchNavItem[] = [
 /** Petal-wired GlobalSearch: injects frappe client + Next.js router. */
 export function GlobalSearch() {
   const frappe = useFrappe()
-  const router = useRouter()
+  const router = useGuardedRouter()
 
   async function fetchDoctypes() {
     const res = await frappe.callMethod<{ values: unknown[][]; keys: string[] }>(
@@ -77,7 +76,7 @@ export function GlobalSearch() {
       onFetchDoctypes={fetchDoctypes}
       onFetchReports={fetchReports}
       onGlobalSearch={globalSearch}
-      onNavigate={(href) => { if (confirmLeave()) router.push(href) }}
+      onNavigate={(href) => router.push(href)}
     />
   )
 }

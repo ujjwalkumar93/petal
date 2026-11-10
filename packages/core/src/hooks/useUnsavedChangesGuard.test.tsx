@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { cleanup, render } from "@testing-library/react"
 import { useUnsavedChangesGuard } from "./useUnsavedChangesGuard"
 import { confirmLeave, hasUnsavedChanges } from "@/lib/nav/leave-guard"
@@ -94,5 +94,58 @@ describe("useUnsavedChangesGuard", () => {
     unmount()
     expect(hasUnsavedChanges()).toBe(false)
     expect(confirmLeave()).toBe(true)
+  })
+
+  describe("browser Back/Forward", () => {
+    // Stands in for the App Router's own popstate listener (non-capture, on window).
+    let routerSawPop: ReturnType<typeof vi.fn>
+    const onRouterPop = () => routerSawPop()
+
+    beforeEach(() => {
+      routerSawPop = vi.fn()
+      window.history.replaceState({ __NA: true, page: "list" }, "", "/list/Item")
+      window.history.pushState({ __NA: true, page: "form" }, "", "/form/Item/ITEM-1")
+      window.addEventListener("popstate", onRouterPop)
+    })
+    afterEach(() => window.removeEventListener("popstate", onRouterPop))
+
+    // jsdom traverses history in a later task; the guard may stop every other
+    // popstate listener, so wait for the traversal rather than for an event.
+    async function back(): Promise<void> {
+      window.history.back()
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+
+    it("keeps the user on the form when they cancel", async () => {
+      vi.spyOn(window, "confirm").mockReturnValue(false)
+      render(<Page dirty onNavigate={() => {}} />)
+
+      await back()
+
+      expect(window.confirm).toHaveBeenCalledOnce()
+      expect(routerSawPop).not.toHaveBeenCalled()
+      expect(window.location.pathname).toBe("/form/Item/ITEM-1")
+      expect(window.history.state).toMatchObject({ page: "form" })
+    })
+
+    it("lets the router handle Back when the user confirms", async () => {
+      vi.spyOn(window, "confirm").mockReturnValue(true)
+      render(<Page dirty onNavigate={() => {}} />)
+
+      await back()
+
+      expect(routerSawPop).toHaveBeenCalledOnce()
+      expect(window.location.pathname).toBe("/list/Item")
+    })
+
+    it("does not ask when nothing is dirty", async () => {
+      const confirm = vi.spyOn(window, "confirm")
+      render(<Page dirty={false} onNavigate={() => {}} />)
+
+      await back()
+
+      expect(confirm).not.toHaveBeenCalled()
+      expect(routerSawPop).toHaveBeenCalledOnce()
+    })
   })
 })

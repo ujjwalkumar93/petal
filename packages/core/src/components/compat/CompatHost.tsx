@@ -12,17 +12,20 @@ import type { ChildTableMeta } from "@petal/ui"
 import { uiStore, deskUrlToPath, type CompatDialog, type DialogField, type MsgEntry, type PickerEntry } from "@/lib/frappe-compat"
 import { setCompatNavigator } from "@/lib/frappe-compat/browser"
 import { confirmLeave } from "@/lib/nav/leave-guard"
+import { useGuardedRouter } from "@/hooks/useGuardedRouter"
 import { FrappeHtml, indicatorClass } from "./FrappeHtml"
 
 const w = () => (typeof window !== "undefined" ? (window as any) : ({} as any))
 
 export function CompatHost() {
   const router = useRouter()
+  // Scripts' frappe.set_route() can fire while the form has unsaved edits.
+  const guardedRouter = useGuardedRouter()
   const state = useSyncExternalStore(uiStore.subscribe, uiStore.getState, uiStore.getState)
 
   useEffect(() => {
-    setCompatNavigator((path, opts) => (opts?.replace ? router.replace(path) : router.push(path)))
-  }, [router])
+    setCompatNavigator((path, opts) => (opts?.replace ? guardedRouter.replace(path) : guardedRouter.push(path)))
+  }, [guardedRouter])
 
   // Desk links inside script-rendered HTML (/app/sales-invoice/…) → Petal routes.
   useEffect(() => {

@@ -1,5 +1,5 @@
 "use client"
-import { useRouter } from "next/navigation"
+import { useGuardedRouter } from "@/hooks/useGuardedRouter"
 import { FieldInput as FieldInputUI } from "@petal/ui"
 import type { LinkSearch, MetaField } from "./types"
 
@@ -11,7 +11,8 @@ export function FieldInput({ field, value, onChange, disabled = false, inputStyl
   inputStyle?: Record<string, string>
   onLinkSearch?: LinkSearch
 }) {
-  const router = useRouter()
+  // Leaves the form for the new linked doc, so unsaved edits need confirming.
+  const router = useGuardedRouter()
 
   function createNew() {
     const returnTo = encodeURIComponent(window.location.pathname)

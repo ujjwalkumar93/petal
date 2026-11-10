@@ -7,10 +7,10 @@ import { confirmLeave, isInAppNavigation, registerLeaveGuard } from "@/lib/nav/l
  * Warns before unsaved changes are lost:
  *  - reload, tab close, typing a new URL → the browser's own "Leave site?" prompt
  *  - clicking any in-app link (sidebar, breadcrumbs, link fields…) → confirm dialog
- *  - programmatic navigation that calls confirmLeave() (global search, logout)
- *
- * Not covered: the browser Back button inside the app (the App Router owns
- * popstate and offers no way to cancel it).
+ *  - the browser Back/Forward buttons → confirm dialog; cancelling puts the
+ *    page's history entry back (the forward history is lost, as browsers allow
+ *    no other way to undo a traversal)
+ *  - programmatic navigation through useGuardedRouter() or confirmLeave()
  */
 export function useUnsavedChangesGuard(hasChanges: boolean): void {
   const ref = useRef(hasChanges)
@@ -38,10 +38,27 @@ export function useUnsavedChangesGuard(hasChanges: boolean): void {
       e.stopPropagation()
     }
 
+    // By the time popstate fires the URL has already changed. A capture
+    // listener on window runs before the App Router's own (non-capture) one, so
+    // stopping it here keeps the router on this page; the page's entry is then
+    // pushed back so the address bar matches. The state includes Next's __NA
+    // marker, so its patched pushState passes it through without re-routing.
+    const here = { state: window.history.state as unknown, url: window.location.href }
+    function onPopState(e: PopStateEvent) {
+      const to = new URL(window.location.href)
+      const from = new URL(here.url)
+      if (to.pathname === from.pathname && to.search === from.search) return // hash only
+      if (confirmLeave()) return
+      e.stopImmediatePropagation()
+      window.history.pushState(here.state, "", here.url)
+    }
+
     window.addEventListener("beforeunload", onBeforeUnload)
+    window.addEventListener("popstate", onPopState, true)
     document.addEventListener("click", onClick, true)
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload)
+      window.removeEventListener("popstate", onPopState, true)
       document.removeEventListener("click", onClick, true)
     }
   }, [hasChanges])

@@ -1,9 +1,9 @@
 // Unsaved-changes protection shared by every way of leaving a page.
 //
 // Pages with editable state register a guard (see useUnsavedChangesGuard).
-// Links are covered automatically by the hook; code that navigates
-// programmatically on a user's behalf (global search, logout, Desk links)
-// asks confirmLeave() first.
+// Links and the browser Back/Forward buttons are covered by the hook; code
+// that navigates on a user's behalf uses useGuardedRouter(), or asks
+// confirmLeave() itself before doing something else first (logout).
 
 export const LEAVE_MESSAGE = "You have unsaved changes. Leave this page and discard them?"
 
