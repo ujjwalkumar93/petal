@@ -24,6 +24,10 @@ export default defineConfig({
       provider: "v8",
       include: ["packages/*/src/**/*.{ts,tsx}"],
       exclude: ["**/*.test.*", "**/*.d.ts"],
+      // CI gate (`pnpm test:coverage`): core must not slip below 60% of lines.
+      thresholds: {
+        "packages/core/src/**": { lines: 60 },
+      },
     },
   },
 })
