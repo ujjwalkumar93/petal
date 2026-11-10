@@ -7,6 +7,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "lint": "eslint .",
     "dev": "tsc --watch",
     "clean": "rm -rf dist"
   },

@@ -1,12 +1,16 @@
 import { defineConfig, globalIgnores } from "eslint/config"
 import nextVitals from "eslint-config-next/core-web-vitals"
 import nextTs from "eslint-config-next/typescript"
+import path from "node:path"
+
+// Absolute, so `pnpm lint` inside a package resolves it the same as at the root.
+const coreDir = path.join(import.meta.dirname, "packages/core/")
 
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    settings: { next: { rootDir: "packages/core/" } },
+    settings: { next: { rootDir: coreDir } },
     rules: {
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" }],
       // These eslint-plugin-react-hooks v7 rules check React Compiler
