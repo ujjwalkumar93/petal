@@ -16,10 +16,13 @@ export default defineConfig({
     ],
   },
   test: {
-    include: ["packages/*/src/**/*.test.{ts,tsx}"],
-    environment: "node",
-    environmentMatchGlobs: [["**/*.test.tsx", "jsdom"]],
     setupFiles: ["./vitest.setup.ts"],
+    // Component tests (.tsx) run in jsdom, the rest in Node. A .ts file can
+    // still opt into jsdom with a `// @vitest-environment jsdom` comment.
+    projects: [
+      { extends: true, test: { name: "node", include: ["packages/*/src/**/*.test.ts"], environment: "node" } },
+      { extends: true, test: { name: "dom", include: ["packages/*/src/**/*.test.tsx"], environment: "jsdom" } },
+    ],
     coverage: {
       provider: "v8",
       include: ["packages/*/src/**/*.{ts,tsx}"],
