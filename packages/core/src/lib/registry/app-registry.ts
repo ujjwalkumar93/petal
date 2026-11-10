@@ -1,9 +1,20 @@
 import type { PetalAppMeta, PetalConfig, PetalHooks } from "@petal/sdk"
 import { mergeFormSlots } from "./compose-slots"
+import { USE_DEV_URLS as isDev } from "./dev-urls"
 
-// Load apps from their devUrl: always in `next dev`, and in a production build
-// when NEXT_PUBLIC_PETAL_USE_DEV_URLS=1 (fast local runs against app dev servers).
-const isDev = process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_PETAL_USE_DEV_URLS === "1"
+/** Longest an app's on_init / on_boot may take before it's treated as failed. */
+const HOOK_TIMEOUT_MS = 10_000
+
+/** Rejects if `work` hasn't settled in HOOK_TIMEOUT_MS, so one app can't hold up the shell. */
+function withTimeout<T>(work: Promise<T> | T, what: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  return Promise.race([
+    Promise.resolve(work),
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${what} did not finish within ${HOOK_TIMEOUT_MS / 1000}s`)), HOOK_TIMEOUT_MS)
+    }),
+  ]).finally(() => clearTimeout(timer))
+}
 
 interface RegisteredApp {
   meta: PetalAppMeta
@@ -19,9 +30,14 @@ export class AppRegistry {
     const results = await Promise.allSettled(
       apps.map((app) => this.loadApp(app))
     )
+    // Loaded in parallel, registered in config order: later apps override
+    // earlier ones (settings, theme, routes), whichever finished loading first.
     results.forEach((result, i) => {
       const app = apps[i]
-      if (result.status === "rejected") {
+      if (result.status === "fulfilled") {
+        this.apps.set(result.value.meta.name, result.value)
+        console.info(`[Petal] Loaded app: ${result.value.meta.name}`)
+      } else {
         const msg = result.reason instanceof Error ? result.reason.message : String(result.reason)
         this.failedApps.set(app!.name, msg)
         console.error(`[Petal] Failed to load app "${app?.name}": ${msg}`)
@@ -29,7 +45,9 @@ export class AppRegistry {
     })
   }
 
-  private async loadApp(meta: PetalAppMeta): Promise<void> {
+  private async loadApp(meta: PetalAppMeta): Promise<RegisteredApp> {
+    // Rejected by the server (incompatible petalVersion, malformed integrity): never import it.
+    if (meta._configError) throw new Error(meta._configError)
     let hooks: PetalHooks
 
     if (meta._hooks) {
@@ -48,16 +66,14 @@ export class AppRegistry {
       hooks = appModule.default ?? appModule
     }
 
-    await hooks.on_init?.()
-
-    this.apps.set(meta.name, { meta, hooks })
-    console.info(`[Petal] Loaded app: ${meta.name}`)
+    if (hooks.on_init) await withTimeout(hooks.on_init(), "on_init")
+    return { meta, hooks }
   }
 
   async runBootHooks(): Promise<void> {
     const results = await Promise.allSettled(
       this.getAll().map(({ hooks }) =>
-        hooks.on_boot ? hooks.on_boot() : Promise.resolve()
+        hooks.on_boot ? withTimeout(hooks.on_boot(), "on_boot") : Promise.resolve()
       )
     )
     results.forEach((result, i) => {

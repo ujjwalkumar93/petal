@@ -95,3 +95,61 @@ describe("compose-slots", () => {
     expect(merged.before).toBe(l)
   })
 })
+
+describe("AppRegistry lifecycle limits (#16)", () => {
+  it("gives up on an on_init that never settles, and reports the app", async () => {
+    vi.useFakeTimers()
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    vi.spyOn(console, "info").mockImplementation(() => {})
+    const r = new AppRegistry()
+    const loading = r.loadFromConfig({ apps: [app("stuck", { on_init: () => new Promise(() => {}) }), app("fine", {})] })
+    await vi.advanceTimersByTimeAsync(10_000)
+    await loading
+    vi.useRealTimers()
+    expect(r.getAll().map((a) => a.meta.name)).toEqual(["fine"])
+    expect(r.getFailedApps().get("stuck")).toMatch(/on_init did not finish within 10s/)
+  })
+
+  it("doesn't let one hanging on_boot hold up the others", async () => {
+    vi.useFakeTimers()
+    const err = vi.spyOn(console, "error").mockImplementation(() => {})
+    vi.spyOn(console, "info").mockImplementation(() => {})
+    const r = new AppRegistry()
+    const booted = vi.fn()
+    await r.loadFromConfig({ apps: [app("slow", { on_boot: () => new Promise(() => {}) }), app("quick", { on_boot: booted })] })
+    const boot = r.runBootHooks()
+    await vi.advanceTimersByTimeAsync(10_000)
+    await boot
+    vi.useRealTimers()
+    expect(booted).toHaveBeenCalled()
+    expect(String(err.mock.calls.at(-1))).toMatch(/on_boot failed for "slow".*within 10s/)
+  })
+
+  it("never imports an app the server rejected", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    const r = new AppRegistry()
+    const init = vi.fn()
+    await r.loadFromConfig({ apps: [{ ...app("old", { on_init: init }), _configError: "old needs Petal ^9; this is Petal 0.0.1" }] })
+    expect(init).not.toHaveBeenCalled()
+    expect(r.getFailedApps().get("old")).toBe("old needs Petal ^9; this is Petal 0.0.1")
+  })
+})
+
+describe("AppRegistry precedence", () => {
+  it("registers apps in config order however fast each one loads, so later apps win", async () => {
+    vi.spyOn(console, "info").mockImplementation(() => {})
+    const r = new AppRegistry()
+    let finishFirst!: () => void
+    await Promise.all([
+      r.loadFromConfig({
+        apps: [
+          app("first", { on_init: () => new Promise<void>((res) => { finishFirst = res }), overrides: { settings: { currency: "USD" } } }),
+          app("second", { overrides: { settings: { currency: "INR" } } }),
+        ],
+      }),
+      Promise.resolve().then(() => finishFirst()), // "first" finishes after "second"
+    ])
+    expect(r.getAll().map((a) => a.meta.name)).toEqual(["first", "second"])
+    expect(r.getMergedSettings()).toMatchObject({ currency: "INR" })
+  })
+})

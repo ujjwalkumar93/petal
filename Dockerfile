@@ -7,6 +7,9 @@
 #   FRAPPE_SITE_NAME     Frappe site name, if it differs from the backend hostname
 #   PETAL_APPS           JSON array of custom apps (overrides petal.config.ts)
 #   PETAL_TENANTS        JSON object keyed by hostname — enables multi-tenancy
+#   PETAL_TRUST_PROXY    reverse proxies in front of Petal (1 = one); off: X-Forwarded-* ignored
+#   PETAL_MAX_BODY_MB    largest upload passed to Frappe (default 50)
+#   PETAL_UPSTREAM_TIMEOUT_MS  wait for Frappe's response headers (default 120000)
 # Build-time args (Next.js serializes rewrites and NEXT_PUBLIC_* at build):
 #   FRAPPE_SOCKETIO_URL  realtime server (default: backend host on :9000)
 #   PETAL_REALTIME=0     disable realtime entirely

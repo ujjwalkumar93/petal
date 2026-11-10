@@ -65,10 +65,42 @@ export function normalizeHost(host: string): string {
   return host.trim().toLowerCase().replace(/:\d+$/, "").replace(/\.$/, "")
 }
 
-/** Hostname the browser used. Honours X-Forwarded-Host from a reverse proxy (first value). */
-export function requestHost(headers: { get(name: string): string | null }): string {
-  const fwd = headers.get("x-forwarded-host")?.split(",")[0]
+type HeaderGetter = { get(name: string): string | null }
+
+/**
+ * How many reverse proxies in front of Petal to trust (PETAL_TRUST_PROXY).
+ * Off (0) by default: then X-Forwarded-* headers come from the client and
+ * are ignored. "1"/"true"/"yes"/"on" mean one proxy (nginx, a load balancer);
+ * a number trusts that many hops.
+ */
+export function trustedProxyHops(env: Record<string, string | undefined>): number {
+  const raw = (env.PETAL_TRUST_PROXY ?? "").trim().toLowerCase()
+  if (["1", "true", "yes", "on"].includes(raw)) return 1
+  const n = /^\d+$/.test(raw) ? Number(raw) : 0
+  return Number.isSafeInteger(n) ? n : 0
+}
+
+/**
+ * Hostname the browser used. X-Forwarded-Host (first value) only counts when
+ * a reverse proxy is trusted; otherwise a client could pick its tenant.
+ */
+export function requestHost(headers: HeaderGetter, trustedHops = 0): string {
+  const fwd = trustedHops > 0 ? headers.get("x-forwarded-host")?.split(",")[0] : undefined
   return normalizeHost(fwd || headers.get("host") || "")
+}
+
+/**
+ * The client's address as the outermost trusted proxy saw it: each proxy
+ * appends its peer to X-Forwarded-For, so with N trusted hops it is the Nth
+ * entry from the right. Everything left of it was written by the client.
+ * Null when no proxy is trusted: Next keeps a client-sent X-Forwarded-For
+ * as is, so it can't be told apart from a real one.
+ */
+export function clientIp(headers: HeaderGetter, trustedHops: number): string | null {
+  if (trustedHops <= 0) return null
+  const hops = (headers.get("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean)
+  if (!hops.length) return null
+  return hops[Math.max(0, hops.length - trustedHops)] ?? null
 }
 
 /** Exact hostname match first, then a wildcard key like "*.example.com". */
@@ -90,13 +122,13 @@ export type Backend = { frappeUrl: string; siteHost: string; apps: PetalAppMeta[
  * (null for an unknown host), otherwise the single-tenant default.
  */
 export function backendFor(
-  headers: { get(name: string): string | null },
-  /** Usually process.env — reads PETAL_TENANTS, FRAPPE_BACKEND_URL, FRAPPE_SITE_NAME. */
+  headers: HeaderGetter,
+  /** Usually process.env: PETAL_TENANTS, PETAL_TRUST_PROXY, FRAPPE_BACKEND_URL, FRAPPE_SITE_NAME. */
   env: Record<string, string | undefined>,
 ): Backend | null {
   const tenants = parseTenants(env.PETAL_TENANTS)
   if (tenants) {
-    const t = resolveTenant(tenants, requestHost(headers))
+    const t = resolveTenant(tenants, requestHost(headers, trustedProxyHops(env)))
     if (!t) return null
     return {
       frappeUrl: t.frappeUrl.replace(/\/$/, ""),

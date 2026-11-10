@@ -475,15 +475,17 @@ NEXT_PUBLIC_FRONTEND_URL=https://petal.mycompany.com`} />
 
             <h3 className="font-semibold text-foreground mt-8 mb-3">Docker Compose — multi-tenant</h3>
             <p className="text-sm text-muted-foreground mb-3">
-              Run a single Petal container and route both subdomains to it (via a reverse proxy like Nginx or Caddy). Petal resolves the tenant from the <Mono>Host</Mono> header on each request.
+              Run a single Petal container and route both subdomains to it (via a reverse proxy like Nginx or Caddy). Petal resolves the tenant from the <Mono>Host</Mono> header on each request. With <Mono>PETAL_TRUST_PROXY=1</Mono> it also honours the proxy&apos;s <Mono>X-Forwarded-Host</Mono> and passes the real client address on to Frappe; only set it when Petal can be reached through that proxy alone (see SECURITY.md).
             </p>
             <CodeBlock label="docker-compose.yml" code={`services:
   petal:
     image: ghcr.io/petalframework/petal:latest
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"        # reachable only through the reverse proxy below
     env_file:
       - .env.local    # contains PETAL_TENANTS (and no FRAPPE_BACKEND_URL/PETAL_APPS)
+    environment:
+      PETAL_TRUST_PROXY: "1"   # one proxy (Caddy) in front: trust its X-Forwarded-* headers
     restart: unless-stopped
 
   # Example: Caddy as a reverse proxy — routes both subdomains to Petal

@@ -80,3 +80,20 @@ describe("proxy.ts multi-tenancy", () => {
     expect(await res.text()).toBe("Unknown tenant")
   })
 })
+
+describe("proxy.ts matcher", () => {
+  it("stays off the API proxy, so Next doesn't buffer (and cut off at 10 MB) uploads", async () => {
+    const { unstable_doesMiddlewareMatch } = await import("next/experimental/testing/server")
+    const { config } = await import("./proxy")
+    const matches = (url: string) => unstable_doesMiddlewareMatch({ config, url })
+    expect(matches("/api/v1/upload")).toBe(false)
+    expect(matches("/api/v1/doc/ToDo/T-1")).toBe(false)
+    expect(matches("/api/v1/exec")).toBe(false)
+    // Pages still get CSP, and the print preview its frameable policy.
+    expect(matches("/")).toBe(true)
+    expect(matches("/form/ToDo/new")).toBe(true)
+    expect(matches("/api/v1/printview")).toBe(true)
+    expect(matches("/api/config")).toBe(true)
+    expect(matches("/_next/static/chunk.js")).toBe(false)
+  })
+})

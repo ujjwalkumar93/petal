@@ -25,10 +25,9 @@ export default function SettingsPage() {
       <div className="bg-white border border-border rounded-lg p-6 space-y-4">
         <h2 className="text-lg font-semibold">Connection</h2>
         <div>
-          <label className="text-sm font-medium text-muted-foreground">Backend URL</label>
-          <p className="mt-1 text-sm font-mono bg-muted px-3 py-2 rounded-md">
-            {process.env.NEXT_PUBLIC_FRAPPE_BACKEND_URL || "http://localhost:8000"}
-          </p>
+          <label className="text-sm font-medium text-muted-foreground">Backend</label>
+          <p className="mt-1 text-sm font-mono bg-muted px-3 py-2 rounded-md">/api/v1</p>
+          <p className="mt-1 text-xs text-muted-foreground">Frappe is reached through Petal&apos;s proxy. Its address stays on the server.</p>
         </div>
         <div>
           <label className="text-sm font-medium text-muted-foreground">Frontend URL</label>

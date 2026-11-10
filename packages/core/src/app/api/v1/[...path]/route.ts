@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getRuntimeConfig } from "@/lib/config/runtime-config"
-import { backendFor } from "@/lib/config/tenants"
+import { backendFor, clientIp, trustedProxyHops } from "@/lib/config/tenants"
 import {
   BOOT_PATH, CSRF_PATH, EXACT_MAP, extractBootJson, extractCsrfToken, rewritePrintHtml, stripCookieDomain, translatePath,
 } from "@/lib/frappe/proxy-paths"
@@ -13,7 +13,13 @@ function getBackend(req: NextRequest): { frappeUrl: string; frappeSiteHost: stri
 }
 
 const DROP_REQUEST_HEADERS = new Set([
-  "host", "content-length", "connection", "transfer-encoding",
+  "host", "content-length",
+  // Hop-by-hop: they describe the browser→Petal connection, not Petal→Frappe.
+  // fetch() rejects a request carrying Expect (curl sends it on large uploads).
+  "connection", "transfer-encoding", "keep-alive", "expect", "upgrade", "te", "trailer", "proxy-connection",
+  // Set below from what a trusted proxy reported, never passed through: a
+  // client could otherwise pick the IP Frappe rate-limits and logs.
+  "x-forwarded-for", "x-forwarded-host", "x-forwarded-port", "x-forwarded-proto", "forwarded", "x-real-ip",
 ])
 // fetch() transparently decodes gzip/br/deflate bodies but keeps the upstream
 // Content-Encoding and Content-Length headers. Forwarding them would make the
@@ -33,7 +39,79 @@ function badGateway(): NextResponse {
 
 const NULL_BODY_STATUSES = new Set([101, 204, 205, 304])
 
-async function buildResponse(frappeRes: Response): Promise<NextResponse> {
+const MB = 1024 * 1024
+/** Largest request body passed to Frappe (PETAL_MAX_BODY_MB, default 50). */
+function maxBodyBytes(): number {
+  const mb = Number(process.env.PETAL_MAX_BODY_MB)
+  return (Number.isFinite(mb) && mb > 0 ? mb : 50) * MB
+}
+/** How long to wait for Frappe's response headers (PETAL_UPSTREAM_TIMEOUT_MS, default 120 s, as bench's nginx). */
+function upstreamTimeoutMs(): number {
+  const ms = Number(process.env.PETAL_UPSTREAM_TIMEOUT_MS)
+  return Number.isFinite(ms) && ms > 0 ? ms : 120_000
+}
+
+class UpstreamTimeout extends Error {}
+class BodyTooLarge extends Error {}
+
+function tooLarge(): NextResponse {
+  return NextResponse.json({ error: `Request body is larger than ${Math.round(maxBodyBytes() / MB)} MB` }, { status: 413 })
+}
+function gatewayTimeout(): NextResponse {
+  return NextResponse.json({ error: "The backend did not respond in time" }, { status: 504 })
+}
+
+/** Passes the body through, failing the upload once it grows past the limit. */
+function limitBody(body: ReadableStream<Uint8Array>, max: number): ReadableStream<Uint8Array> {
+  let seen = 0
+  return body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      seen += chunk.byteLength
+      if (seen > max) controller.error(new BodyTooLarge())
+      else controller.enqueue(chunk)
+    },
+  }))
+}
+
+/**
+ * fetch() to Frappe that gives up when the response headers take longer than
+ * the upstream timeout, and is cancelled when the browser disconnects. The
+ * timeout covers only the wait for headers: a large download to a slow client
+ * may stream for longer.
+ */
+async function upstreamFetch(req: NextRequest, url: string, init: RequestInit): Promise<Response> {
+  const ctl = new AbortController()
+  const onClientGone = () => ctl.abort(req.signal.reason)
+  if (req.signal.aborted) onClientGone()
+  else req.signal.addEventListener("abort", onClientGone, { once: true })
+  const timer = setTimeout(() => ctl.abort(new UpstreamTimeout()), upstreamTimeoutMs())
+  try {
+    return await fetch(url, { ...init, signal: ctl.signal })
+  } catch (err) {
+    if (ctl.signal.reason instanceof UpstreamTimeout) throw ctl.signal.reason
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** True when `err` (or what caused it) is one of ours. */
+function isError(err: unknown, type: typeof UpstreamTimeout | typeof BodyTooLarge): boolean {
+  for (let e: unknown = err, i = 0; e && i < 5; e = (e as { cause?: unknown }).cause, i++) {
+    if (e instanceof type) return true
+  }
+  return false
+}
+
+/** 504/413 for our own limits, else a 502 that keeps details in the server log. */
+function failure(err: unknown, log: () => void): NextResponse {
+  if (isError(err, UpstreamTimeout)) return gatewayTimeout()
+  if (isError(err, BodyTooLarge)) return tooLarge()
+  log()
+  return badGateway()
+}
+
+function buildResponse(frappeRes: Response): NextResponse {
   const resHeaders = new Headers()
   frappeRes.headers.forEach((value, key) => {
     if (!DROP_RESPONSE_HEADERS.has(key.toLowerCase())) {
@@ -47,6 +125,7 @@ async function buildResponse(frappeRes: Response): Promise<NextResponse> {
       : (frappeRes.headers.get("set-cookie") ?? "").split(/,(?=[^ ])/).filter(Boolean)
 
   resHeaders.delete("set-cookie")
+  resHeaders.set("X-Content-Type-Options", "nosniff")
   rawCookies.forEach((cookie) => {
     // Only strip Domain: Frappe's cookie is scoped to its own origin, but the
     // browser only ever talks to this proxy's origin, so a foreign Domain
@@ -61,8 +140,8 @@ async function buildResponse(frappeRes: Response): Promise<NextResponse> {
   if (NULL_BODY_STATUSES.has(frappeRes.status)) {
     return new NextResponse(null, { status: frappeRes.status, headers: resHeaders })
   }
-  const resBody = await frappeRes.arrayBuffer()
-  return new NextResponse(resBody, { status: frappeRes.status, headers: resHeaders })
+  // Streamed: files and PDFs reach the browser as Frappe sends them.
+  return new NextResponse(frappeRes.body, { status: frappeRes.status, headers: resHeaders })
 }
 
 /** Network errors from fetch() keep the useful part (ECONNREFUSED host:port) in `cause`. */
@@ -98,6 +177,11 @@ async function proxy(req: NextRequest, ctx: RouteCtx): Promise<NextResponse> {
     }
   })
   reqHeaders["host"] = frappeSiteHost
+  const hops = trustedProxyHops(process.env)
+  const ip = clientIp(req.headers, hops)
+  if (ip) reqHeaders["x-forwarded-for"] = ip
+  const proto = hops > 0 ? req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() : undefined
+  if (proto) reqHeaders["x-forwarded-proto"] = proto
 
   // Translate neutral CSRF header → what Frappe expects server-side
   if (reqHeaders["x-csrf-token"]) {
@@ -106,16 +190,21 @@ async function proxy(req: NextRequest, ctx: RouteCtx): Promise<NextResponse> {
   }
 
   const isReadOnly = req.method === "GET" || req.method === "HEAD"
-  // Raw bytes, never req.text(): multipart uploads carry binary data that a
-  // UTF-8 decode/re-encode round trip silently corrupts.
-  const body: ArrayBuffer | null = isReadOnly ? null : await req.arrayBuffer()
+  const max = maxBodyBytes()
+  if (!isReadOnly && Number(req.headers.get("content-length") ?? 0) > max) return tooLarge()
+  // Streamed as raw bytes (never req.text(): multipart uploads carry binary
+  // data that a UTF-8 decode/re-encode round trip silently corrupts), with
+  // the size limit enforced as it flows for bodies without Content-Length.
+  const body = !isReadOnly && req.body ? limitBody(req.body, max) : null
+  const withBody = (init: RequestInit): RequestInit =>
+    body ? ({ ...init, body, duplex: "half" } as RequestInit) : init
 
   // /printview — proxy Frappe's full print page, rewriting asset paths so
   // they resolve through this same proxy instead of the hidden Frappe origin.
   if (neutralPath === "printview") {
     const target = `${frappeUrl}/printview${search}`
     try {
-      const frappeRes = await fetch(target, {
+      const frappeRes = await upstreamFetch(req, target, {
         headers: reqHeaders,
         redirect: "manual",
         cache: "no-store",
@@ -126,19 +215,17 @@ async function proxy(req: NextRequest, ctx: RouteCtx): Promise<NextResponse> {
         headers: { "Content-Type": "text/html; charset=utf-8" },
       })
     } catch (err) {
-      console.error("[Petal Proxy] printview failed →", String(err))
-      return badGateway()
+      return failure(err, () => console.error("[Petal Proxy] printview failed →", String(err)))
     }
   }
 
   if (neutralPath.startsWith("assets/")) {
     const target = `${frappeUrl}/${encodedPath}${search}`
     try {
-      const frappeRes = await fetch(target, { headers: reqHeaders, redirect: "manual", cache: "no-store" })
+      const frappeRes = await upstreamFetch(req, target, { headers: reqHeaders, redirect: "manual", cache: "no-store" })
       return buildResponse(frappeRes)
     } catch (err) {
-      console.error("[Petal Proxy] asset fetch failed →", { target, cause: describeError(err) })
-      return badGateway()
+      return failure(err, () => console.error("[Petal Proxy] asset fetch failed →", { target, cause: describeError(err) }))
     }
   }
 
@@ -146,7 +233,7 @@ async function proxy(req: NextRequest, ctx: RouteCtx): Promise<NextResponse> {
   // scrape it from the desk boot page, which every Frappe version renders.
   if (neutralPath === CSRF_PATH && !getEffectivePathMap(req)[CSRF_PATH]) {
     try {
-      const frappeRes = await fetch(`${frappeUrl}/app`, {
+      const frappeRes = await upstreamFetch(req, `${frappeUrl}/app`, {
         headers: { cookie: reqHeaders["cookie"] ?? "", host: frappeSiteHost, accept: "text/html" },
         redirect: "manual",
         cache: "no-store",
@@ -156,8 +243,7 @@ async function proxy(req: NextRequest, ctx: RouteCtx): Promise<NextResponse> {
         ? NextResponse.json({ message: token })
         : NextResponse.json({ error: "No CSRF token — session is not logged in" }, { status: 401 })
     } catch (err) {
-      console.error("[Petal Proxy] csrf fetch failed →", String(err))
-      return badGateway()
+      return failure(err, () => console.error("[Petal Proxy] csrf fetch failed →", String(err)))
     }
   }
 
@@ -165,7 +251,7 @@ async function proxy(req: NextRequest, ctx: RouteCtx): Promise<NextResponse> {
   // (frappe.sessions.get isn't whitelisted). For the Frappe-compatible runtime.
   if (neutralPath === BOOT_PATH) {
     try {
-      const frappeRes = await fetch(`${frappeUrl}/app`, {
+      const frappeRes = await upstreamFetch(req, `${frappeUrl}/app`, {
         headers: { cookie: reqHeaders["cookie"] ?? "", host: frappeSiteHost, accept: "text/html" },
         redirect: "manual",
         cache: "no-store",
@@ -177,8 +263,7 @@ async function proxy(req: NextRequest, ctx: RouteCtx): Promise<NextResponse> {
         headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
       })
     } catch (err) {
-      console.error("[Petal Proxy] boot fetch failed →", String(err))
-      return badGateway()
+      return failure(err, () => console.error("[Petal Proxy] boot fetch failed →", String(err)))
     }
   }
 
@@ -190,17 +275,15 @@ async function proxy(req: NextRequest, ctx: RouteCtx): Promise<NextResponse> {
     delete reqHeaders["x-method"]
     const target = `${frappeUrl}/api/method/${method}${search}`
     try {
-      const frappeRes = await fetch(target, {
+      const frappeRes = await upstreamFetch(req, target, withBody({
         method: "POST",
         headers: reqHeaders,
         redirect: "manual",
         cache: "no-store",
-        body,
-      })
+      }))
       return buildResponse(frappeRes)
     } catch (err) {
-      console.error("[Petal Proxy] exec failed →", { method, cause: describeError(err) })
-      return badGateway()
+      return failure(err, () => console.error("[Petal Proxy] exec failed →", { method, cause: describeError(err) }))
     }
   }
 
@@ -208,21 +291,18 @@ async function proxy(req: NextRequest, ctx: RouteCtx): Promise<NextResponse> {
   const target = `${frappeUrl}/${frappe_path}${search}`
 
   try {
-    const fetchInit: RequestInit = {
+    const frappeRes = await upstreamFetch(req, target, withBody({
       method: req.method,
       headers: reqHeaders,
       redirect: "manual",
       cache: "no-store",
-    }
-    if (body) fetchInit.body = body
-
-    const frappeRes = await fetch(target, fetchInit)
+    }))
     // Frappe answers get_logged_user with 403 for guests. "Not logged in" is an
     // expected state for this session probe (login page, expired session), so
     // report it as the Guest user instead of a failed request in the console.
     if (neutralPath === "auth/me" && frappeRes.status === 403) {
-      const upstream = await buildResponse(frappeRes)
-      const res = NextResponse.json({ message: "Guest" }, { headers: { "Cache-Control": "no-store" } })
+      const upstream = buildResponse(frappeRes)
+      const res = NextResponse.json({ message: "Guest" }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } })
       // keep any cookie Frappe set (e.g. clearing an expired sid)
       upstream.headers.getSetCookie().forEach((c) => res.headers.append("Set-Cookie", c))
       return res
@@ -230,8 +310,7 @@ async function proxy(req: NextRequest, ctx: RouteCtx): Promise<NextResponse> {
     return buildResponse(frappeRes)
 
   } catch (err) {
-    console.error("[Petal Proxy] fetch failed →", { target, host: frappeSiteHost, cause: describeError(err) })
-    return badGateway()
+    return failure(err, () => console.error("[Petal Proxy] fetch failed →", { target, host: frappeSiteHost, cause: describeError(err) }))
   }
 }
 
