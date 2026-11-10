@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useEffectEvent } from "react"
 import { createPortal } from "react-dom"
 import { cn } from "../lib/utils"
 import { FieldInput } from "./field-input"
@@ -111,9 +111,9 @@ export function QuickEntryDialog({
   const [error, setError] = useState<string | null>(null)
   const [missingFields, setMissingFields] = useState<Set<string>>(new Set())
 
-  // Reset and fetch meta each time the dialog opens
-  useEffect(() => {
-    if (!open) return
+  // Reset and fetch meta each time the dialog opens (an effect event: a new
+  // onFetchMeta callback from the parent must not refetch).
+  const loadMeta = useEffectEvent((isCancelled: () => boolean) => {
     setFields([])
     setValues({})
     setError(null)
@@ -123,13 +123,20 @@ export function QuickEntryDialog({
 
     onFetchMeta()
       .then((meta) => {
+        if (isCancelled()) return
         const qFields = getQuickEntryFields(meta)
         setFields(qFields)
         setValues(buildDefaults(qFields))
       })
-      .catch(() => setError("Could not load form fields."))
-      .finally(() => setMetaLoading(false))
-  }, [open, doctype]) // eslint-disable-line react-hooks/exhaustive-deps
+      .catch(() => { if (!isCancelled()) setError("Could not load form fields.") })
+      .finally(() => { if (!isCancelled()) setMetaLoading(false) })
+  })
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    loadMeta(() => cancelled)
+    return () => { cancelled = true }
+  }, [open, doctype])
 
   function handleChange(fieldname: string, value: unknown) {
     setValues((prev) => ({ ...prev, [fieldname]: value }))
@@ -175,22 +182,24 @@ export function QuickEntryDialog({
     onClose()
   }
 
-  // Keyboard shortcuts: Escape → close, Cmd/Ctrl+Enter → save
+  // Keyboard shortcuts: Escape → close, Cmd/Ctrl+Enter → save. The handler
+  // always sees the current values and callbacks.
+  const onKey = useEffectEvent((e: KeyboardEvent) => {
+    if (e.key === "Escape" && !saving) {
+      e.preventDefault()
+      onClose()
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !saving) {
+      e.preventDefault()
+      void handleSave()
+    }
+  })
   useEffect(() => {
     if (!open) return
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !saving) {
-        e.preventDefault()
-        onClose()
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !saving) {
-        e.preventDefault()
-        void handleSave()
-      }
-    }
-    document.addEventListener("keydown", onKey)
-    return () => document.removeEventListener("keydown", onKey)
-  }, [open, saving, values, fields]) // eslint-disable-line react-hooks/exhaustive-deps
+    const handler = (e: KeyboardEvent) => onKey(e)
+    document.addEventListener("keydown", handler)
+    return () => document.removeEventListener("keydown", handler)
+  }, [open])
 
   if (!open) return null
 

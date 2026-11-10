@@ -5,7 +5,7 @@
  * the "Get Items From" picker, freeze overlay and progress. Mounted once in the
  * shell when an app enables the Frappe-compatible runtime.
  */
-import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation"
 import { ChildTable, FieldInput, cn } from "@petal/ui"
 import type { ChildTableMeta } from "@petal/ui"
@@ -310,38 +310,42 @@ function PickerView({ entry }: { entry: PickerEntry }) {
   const columns: string[] = picker.columns_to_show()
   const childColumns: string[] = picker.child_columns ?? []
 
+  // Reads the current picker state. Re-run on the search inputs only; setters
+  // that rebuild an equal `values` object must not refetch.
+  const valuesKey = JSON.stringify(values)
+  const runSearch = useEffectEvent(async (cancelled: () => boolean) => {
+    try {
+      const r = await frappe.call({ method: "frappe.desk.search.search_widget", args: picker.build_search_args(txt, values, pageLength) })
+      if (cancelled()) return
+      const list: any[] = Array.isArray(r?.message) ? r.message : []
+      setMore(list.length > pageLength)
+      setResults(list.slice(0, pageLength))
+      if (childMode && picker.child_fieldname) {
+        const names = list.map((x) => x.name)
+        const cr = await frappe.call({
+          method: "frappe.client.get_list",
+          args: {
+            doctype: frappe.meta.get_docfield(picker.doctype, picker.child_fieldname)?.options,
+            filters: [["parentfield", "=", picker.child_fieldname], ...(names.length ? [["parent", "in", names]] : [])],
+            fields: ["name", "parent", ...childColumns],
+            parent: picker.doctype,
+            limit_page_length: 100,
+            order_by: "parent",
+          },
+        })
+        if (!cancelled()) setChildRows(Array.isArray(cr?.message) ? cr.message : [])
+      }
+    } finally {
+      if (!cancelled()) setLoading(false)
+    }
+  })
+
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    const t = setTimeout(async () => {
-      try {
-        const r = await frappe.call({ method: "frappe.desk.search.search_widget", args: picker.build_search_args(txt, values, pageLength) })
-        if (cancelled) return
-        const list: any[] = Array.isArray(r?.message) ? r.message : []
-        setMore(list.length > pageLength)
-        setResults(list.slice(0, pageLength))
-        if (childMode && picker.child_fieldname) {
-          const names = list.map((x) => x.name)
-          const cr = await frappe.call({
-            method: "frappe.client.get_list",
-            args: {
-              doctype: frappe.meta.get_docfield(picker.doctype, picker.child_fieldname)?.options,
-              filters: [["parentfield", "=", picker.child_fieldname], ...(names.length ? [["parent", "in", names]] : [])],
-              fields: ["name", "parent", ...childColumns],
-              parent: picker.doctype,
-              limit_page_length: 100,
-              order_by: "parent",
-            },
-          })
-          if (!cancelled) setChildRows(Array.isArray(cr?.message) ? cr.message : [])
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }, 250)
+    const t = setTimeout(() => { void runSearch(() => cancelled) }, 250)
     return () => { cancelled = true; clearTimeout(t) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [txt, JSON.stringify(values), pageLength, childMode])
+  }, [txt, valuesKey, pageLength, childMode])
 
   const close = () => picker.dialog.hide()
   const toggle = (set: Set<string>, name: string) => { const n = new Set(set); if (n.has(name)) n.delete(name); else n.add(name); return n }

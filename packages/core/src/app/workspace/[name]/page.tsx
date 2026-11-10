@@ -1,5 +1,5 @@
 "use client"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useEffectEvent, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useFrappe } from "@/hooks/useFrappe"
 import { usePetalStore } from "@/store/petal-store"
@@ -553,8 +553,9 @@ function ChartWidget({
     }
   }, [frappe])
 
-  // Initial load
-  useEffect(() => {
+  // Initial load. An effect event: it uses the current helpers, but only a
+  // different chart reloads it.
+  const loadInitial = useEffectEvent(() => {
     let restoredFilters: Record<string, unknown> | null = null
     let restoredTi: string | undefined
     let restoredTs: string | undefined
@@ -584,8 +585,9 @@ function ChartWidget({
         setError(err instanceof Error ? err.message : "Could not load chart.")
         setLoading(false)
       })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.chart_name])
+  })
+  const chartName = item.chart_name
+  useEffect(() => { loadInitial() }, [chartName])
 
   // -----------------------------------------------------------------------
   // Action handlers

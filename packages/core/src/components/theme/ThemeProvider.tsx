@@ -20,14 +20,5 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => mq.removeEventListener("change", handler)
   }, [themeMode, themeName])
 
-  // Sync initial system preference into store on mount
-  useEffect(() => {
-    if (themeMode === "system") {
-      // re-trigger apply so the resolved value is consistent
-      applyTheme("system", themeName)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   return <>{children}</>
 }

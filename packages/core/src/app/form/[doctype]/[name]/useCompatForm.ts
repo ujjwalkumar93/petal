@@ -5,7 +5,7 @@
  * its doctype's Form (running the doctype's real client scripts), re-renders on
  * every model change, and routes edits back through frappe.model.set_value.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react"
 import type { FrappeCompatConfig } from "@petal/sdk"
 // Types only: the runtime (jQuery, moment, the Frappe namespace) is loaded on
 // first use, so forms of apps without frappe_compat never download it.
@@ -35,9 +35,15 @@ export function useCompatForm(doctype: string | null, name: string, config: Frap
   const layoutWaiter = useRef<(() => void) | null>(null)
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
-  useEffect(() => {
-    if (!config || !doctype) return
-    let cancelled = false
+  const hasConfig = !!config
+
+  /**
+   * Opens `doctype/name` in the runtime. An effect event: it reads the current
+   * config, prefill and loaded Form, but a new config object or prefill must
+   * not reopen the document; only a route change does.
+   */
+  const openDocument = useEffectEvent((doctype: string, name: string, token: { cancelled: boolean }) => {
+    if (!config) return
     setLoading(true)
     setError(null)
     pending.current = {}
@@ -47,6 +53,7 @@ export function useCompatForm(doctype: string | null, name: string, config: Frap
       setLoading(false)
       return
     }
+    const isCancelled = () => token.cancelled
     void (async () => {
       try {
         const { startCompat, openDoc } = await loadRuntime()
@@ -58,29 +65,34 @@ export function useCompatForm(doctype: string | null, name: string, config: Frap
         const { frm: f } = await openDoc(doctype, name, {
           // Draw the form after onload, then let refresh run against it.
           waitForLayout: (loaded) => new Promise<void>((resolve) => {
-            if (cancelled) { resolve(); return }
+            if (isCancelled()) { resolve(); return }
             layoutWaiter.current = resolve
             setFrm(loaded)
             setOpened({ doctype, name })
             setLoading(false)
           }),
         })
-        if (cancelled) return
+        if (isCancelled()) return
         setFrm(f)
         setOpened({ doctype, name })
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Could not load this document.")
+        if (!isCancelled()) setError(e instanceof Error ? e.message : "Could not load this document.")
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!isCancelled()) setLoading(false)
       }
     })()
+  })
+
+  useEffect(() => {
+    if (!hasConfig || !doctype) return
+    const token = { cancelled: false }
+    openDocument(doctype, name, token)
     return () => {
-      cancelled = true
+      token.cancelled = true
       layoutWaiter.current?.()
       layoutWaiter.current = null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doctype, name, !!config])
+  }, [doctype, name, hasConfig])
 
   // Forms are reused per doctype, so after a route change the loaded Form can
   // still hold the previous document until openDoc finishes. Expose it only
@@ -97,18 +109,24 @@ export function useCompatForm(doctype: string | null, name: string, config: Frap
   })
 
   useEffect(() => {
-    if (!config) return
+    if (!hasConfig) return
     let unsubscribe = () => {}
     let gone = false
     void loadRuntime().then((rt) => { if (!gone) unsubscribe = rt.subscribeForms(() => setVersion((v) => v + 1)) })
     return () => { gone = true; unsubscribe() }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!config])
+  }, [hasConfig])
   useEffect(() => () => { for (const t of Object.values(timers.current)) clearTimeout(t) }, [])
+
+  /**
+   * The runtime mutates the Form in place and bumps `version` on every change,
+   * so "the Form at this version" is what derived values depend on.
+   */
+  const live = useMemo(() => (frm ? { frm, version } : null), [frm, version])
 
   const derived = useMemo(() => {
     // A loaded Form means the runtime is loaded.
     const runtime = loadedRuntime()
+    const frm = live?.frm
     if (!frm?.doc || !runtime) return null
     const { effectiveFields, effectiveChildFields, snapshotDoc } = runtime
     const w = window as any
@@ -145,8 +163,7 @@ export function useCompatForm(doctype: string | null, name: string, config: Frap
       isDirty: frm.is_dirty() || Object.keys(pending.current).length > 0,
       docname: frm.docname,
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frm, version])
+  }, [live])
 
   const commit = useCallback(async (fieldname: string) => {
     if (!frm) return
@@ -183,27 +200,24 @@ export function useCompatForm(doctype: string | null, name: string, config: Frap
   const deskTypes = useMemo(() => new Set([...DESK_DRAWN, ...(config?.desk_controls ?? [])]), [config])
   const usesDeskControl = useCallback((fieldtype: string) => deskTypes.has(fieldtype), [deskTypes])
   const deskControl = useCallback((fieldname: string) => {
-    const field = frm?.fields_dict[fieldname] as any
+    const field = live?.frm.fields_dict[fieldname] as any
     if (!field?.mountDeskControl) return null
     if (!loadedRuntime()?.deskControlsReady()) {
       void loadedRuntime()?.loadDeskControls().then(() => setVersion((v) => v + 1)).catch((e) => console.error("[Petal compat] Desk controls", e))
       return null
     }
     return field.mountDeskControl()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frm, version])
+  }, [live])
   const onButton = useCallback((fieldname: string) => { if (frm) void flush().then(() => loadedRuntime()?.triggerButton(frm, fieldname)) }, [frm, flush])
   /** Give the runtime Petal's rendered form (frm.wrapper etc.); null on unmount. */
   const attachRoot = useCallback((el: HTMLElement | null) => { if (frm) loadedRuntime()?.attachFormRoot(frm, el) }, [frm])
   const tableButtons = useCallback((fieldname: string) =>
-    (frm?.fields_dict[fieldname]?.grid?.custom_buttons ?? []).map((b: any) => ({ label: b.label, onClick: () => void flush().then(() => b.fn?.()) })),
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  [frm, flush, version])
+    (live?.frm.fields_dict[fieldname]?.grid?.custom_buttons ?? []).map((b: any) => ({ label: b.label, onClick: () => void flush().then(() => b.fn?.()) })),
+  [live, flush])
   const tableCannotAdd = useCallback((fieldname: string) => {
-    const grid = frm?.fields_dict[fieldname]?.grid
+    const grid = live?.frm.fields_dict[fieldname]?.grid
     return !!(grid?.cannot_add_rows || grid?.df?.cannot_add_rows)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frm, version])
+  }, [live])
 
   const run = useCallback(async (fn: () => unknown) => {
     await flush()

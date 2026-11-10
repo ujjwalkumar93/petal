@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useEffectEvent, useRef, useState } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { usePathname, useRouter } from "next/navigation"
 import { appRegistry } from "@/lib/registry/app-registry"
@@ -52,12 +52,12 @@ export function PetalProvider({ children }: { children: React.ReactNode }) {
 
   // Session gone (expired, or signed out elsewhere): drop every cached trace of
   // it and let the redirect effect below send the user to /login?redirect=….
-  function expireSession() {
+  const expireSession = useEffectEvent(() => {
     if (usePetalStore.getState().authStatus !== "authenticated") return
     resetSession(queryClient)
     setAuthStatus("unauthenticated")
     toast.warning("Your session has expired", "Please sign in again.")
-  }
+  })
 
   useEffect(() => {
     registerBuiltinIcons()
@@ -78,9 +78,11 @@ export function PetalProvider({ children }: { children: React.ReactNode }) {
     })()
     client.waitFor(appsReady)
 
+    // The user restored from sessionStorage at mount; boot runs once.
+    const storedUser = usePetalStore.getState().user
     void (async () => {
       try {
-        if (user) {
+        if (storedUser) {
           // Paint the shell at once from the stored user, but confirm with the
           // backend: the session may have expired while the tab was closed.
           setAuthStatus("authenticated")
@@ -97,8 +99,6 @@ export function PetalProvider({ children }: { children: React.ReactNode }) {
         setAuthStatus("unauthenticated")
       }
     })()
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setUser, setAuthStatus, setAppTheme, setSettings])
 
   // A 401/403 means either "not permitted" or "signed out". Ask the backend
@@ -114,7 +114,6 @@ export function PetalProvider({ children }: { children: React.ReactNode }) {
         .catch(() => {})
         .finally(() => { probing = false })
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // First-run setup: once per session, ask Frappe whether the setup wizard has

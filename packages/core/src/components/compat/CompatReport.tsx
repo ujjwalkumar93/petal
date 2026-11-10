@@ -46,13 +46,14 @@ export function CompatReport({ name, config }: { name: string; config: FrappeCom
     return unsubscribe
   }, [report])
 
+  // The runtime replaces report.data on each load (and bumps `version`).
+  const reportData = report?.data
   const rows = useMemo(() => {
-    const data = report?.data ?? []
+    const data = reportData ?? []
     if (!search) return data.map((d, i) => ({ d, i }))
     const q = search.toLowerCase()
     return data.map((d, i) => ({ d, i })).filter(({ d }) => Object.values(d ?? {}).some((v) => String(v ?? "").toLowerCase().includes(q)))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [report, report?.data, search])
+  }, [reportData, search])
 
   if (error) return <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>
   if (!report) return <PageLoader label="Loading report…" />
