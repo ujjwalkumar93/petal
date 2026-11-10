@@ -12,7 +12,7 @@ await build({
   entryPoints: ["src/index.ts"],
   bundle:      true,
   platform:    "node",
-  target:      "node18",
+  target:      "node22",
   format:      "cjs",
   outfile:     OUT_FILE,
   external:    ["node:*"],
