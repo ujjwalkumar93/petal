@@ -104,8 +104,8 @@ petal/
 
 | Requirement | Version |
 |---|---|
-| Node.js | 18 or 20 |
-| pnpm | 8+ |
+| Node.js | 20.9+ (Next.js 16 minimum); CI and the Docker image use 26 LTS |
+| pnpm | 10 (pinned in `packageManager`) |
 | Frappe | v15 |
 
 ---

@@ -11,8 +11,13 @@
 #   FRAPPE_SOCKETIO_URL  realtime server (default: backend host on :9000)
 #   PETAL_REALTIME=0     disable realtime entirely
 
-FROM node:20-slim AS base
-RUN corepack enable && corepack prepare pnpm@10 --activate
+FROM node:26.13.0-slim AS base
+# Node ≥25 no longer bundles corepack; install the pnpm pinned in package.json.
+RUN npm install -g pnpm@10.33.0
+# Node ≥25 also adds process-wide localStorage/sessionStorage globals. Petal's
+# browser-only storage code must never resolve them on the server (one shared
+# "session" across all requests), so keep them off like Node 20 did.
+ENV NODE_OPTIONS=--no-experimental-webstorage
 
 FROM base AS deps
 WORKDIR /repo

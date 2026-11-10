@@ -116,7 +116,13 @@ export const usePetalStore = create<PetalState>()(
     }),
     {
       name: "petal-store",
-      storage: createJSONStorage(() => sessionStorage),
+      // Browser only. Node ≥25 has its own process-wide sessionStorage global:
+      // using it during SSR would share one "session" between every request.
+      // Throwing here makes zustand skip persistence on the server.
+      storage: createJSONStorage(() => {
+        if (typeof window === "undefined") throw new Error("no session storage on the server")
+        return window.sessionStorage
+      }),
       // Only persist the user + a completed setup check — everything else rebuilds on boot
       partialize: (state) => ({
         user: state.user,
