@@ -78,3 +78,25 @@ describe("stripForCopy / buildAmendment", () => {
     expect(prefillKey("Sales Invoice")).toBe("petal_quick_entry_Sales Invoice")
   })
 })
+
+describe("missingRequired with conditional fields (#20)", () => {
+  const fields = [
+    { fieldname: "customer", fieldtype: "Link", reqd: 1 as const },
+    { fieldname: "is_company", fieldtype: "Check" },
+    { fieldname: "gstin", fieldtype: "Data", mandatory_depends_on: "is_company" },
+    { fieldname: "po_no", fieldtype: "Data", reqd: 1 as const, mandatory_depends_on: "eval:doc.is_company" },
+  ]
+
+  it("enforces mandatory_depends_on when its condition holds", () => {
+    expect(missingRequired(fields, { customer: "C", is_company: 1 })).toEqual(["gstin", "po_no"])
+  })
+
+  it("lets mandatory_depends_on switch reqd off, like Desk", () => {
+    expect(missingRequired(fields, { customer: "C", is_company: 0 })).toEqual([])
+  })
+
+  it("still checks a required field hidden by depends_on (Desk and the server both do)", () => {
+    const hiddenReqd = [{ fieldname: "tax_id", fieldtype: "Data", reqd: 1 as const, depends_on: "eval:0" }]
+    expect(missingRequired(hiddenReqd, {})).toEqual(["tax_id"])
+  })
+})

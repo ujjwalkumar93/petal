@@ -3,16 +3,7 @@ import { useState, useEffect } from "react"
 import { FieldWrapper } from "./FieldWrapper"
 import type { FormFieldExtras, LayoutSection, LinkSearch, MetaField } from "./types"
 import type { FieldBehavior } from "@petal/sdk"
-
-function evalDepends(expr: string | undefined, doc: Record<string, unknown>): boolean {
-  if (!expr) return true
-  try {
-    const code = expr.startsWith("eval:") ? expr.slice(5) : `!!doc["${expr}"]`
-    return Boolean(new Function("doc", `return (${code})`)(doc))
-  } catch {
-    return true
-  }
-}
+import { fieldState } from "@/lib/doc/field-state"
 
 export function SectionBlock({ section, values, isEditing, onChange, fieldBehaviors, childMetas, onLinkSearch, missingFields, currency = "USD", skipFields, extras }: {
   section: LayoutSection
@@ -40,18 +31,15 @@ export function SectionBlock({ section, values, isEditing, onChange, fieldBehavi
   const hasLabel  = Boolean(section.label)
   const colCount  = section.columns.length
 
+  // Same evaluator as save validation (missingRequired), so the asterisk shown
+  // here is exactly what blocks saving.
   function isVisible(f: MetaField): boolean {
-    if (fieldBehaviors[f.fieldname]?.hidden) return false
-    if (f.hidden_depends_on && evalDepends(f.hidden_depends_on, values)) return false
-    if (f.depends_on && !evalDepends(f.depends_on, values)) return false
-    return true
+    return fieldState(f, values, fieldBehaviors[f.fieldname]).visible
   }
 
   function applyBehavior(field: MetaField): MetaField {
-    const b = fieldBehaviors[field.fieldname]
-    let readOnly: 0 | 1 = b?.read_only ? 1 : (field.read_only ?? 0)
-    if (field.read_only_depends_on && evalDepends(field.read_only_depends_on, values)) readOnly = 1
-    return { ...field, read_only: readOnly }
+    const { readOnly, mandatory } = fieldState(field, values, fieldBehaviors[field.fieldname])
+    return { ...field, read_only: readOnly ? 1 : 0, reqd: mandatory ? 1 : 0 }
   }
 
   const regularCols = section.columns.map((col) => ({
