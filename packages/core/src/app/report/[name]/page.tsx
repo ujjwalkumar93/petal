@@ -95,12 +95,8 @@ function stripFunctionProps(str: string): string {
 
     // Walk back from fIdx to remove the "key:" prefix and any leading comma/whitespace
     let keyEnd = fIdx
-    // while (keyEnd > i && /\s/.test(str[keyEnd - 1])) keyEnd--         // skip whitespace before "function"
-    const ch = str[keyEnd - 1] ?? ""
-
-    while (keyEnd > i && /\s/.test(ch)) {
-      keyEnd--
-    }
+    // skip whitespace before "function" (re-read each step: "key: function")
+    while (keyEnd > i && /\s/.test(str[keyEnd - 1] ?? "")) keyEnd--
     let keyStart = keyEnd
     // Skip back over (params) if any — e.g. key: function(txt) — already handled, just find ":"
     // Actually we need to find the "propname:" that precedes this function
@@ -122,10 +118,9 @@ function stripFunctionProps(str: string): string {
         // while (keyStart > i && /[a-zA-Z0-9_]/.test(str[keyStart - 1] ? "")) keyStart--
         while (keyStart > i && /[a-zA-Z0-9_]/.test(str[keyStart - 1] ?? "")) keyStart--
       }
-      // Also eat the leading comma if present
-      let beforeKey = keyStart
-      while (beforeKey > i && /[\s,]/.test(str[beforeKey - 1] ?? "")) beforeKey--
-      out += str.slice(i, beforeKey)
+      // Keep the comma before the key: the body and the comma after it are
+      // skipped below, and a now-trailing comma is cleaned up afterwards.
+      out += str.slice(i, keyStart)
     } else {
       out += str.slice(i, fIdx)
     }
