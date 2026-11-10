@@ -1,15 +1,16 @@
-import { describe, it, expect, vi } from "vitest"
-import { runImport } from "./run-import"
+import { describe, it, expect, vi, type Mock } from "vitest"
+import { runImport, type ImportApi } from "./run-import"
 
 const docs = (n: number) => Array.from({ length: n }, (_, i) => ({ doctype: "Task", subject: `T${i + 1}` }))
 
-type Fn = ReturnType<typeof vi.fn>
+/** ImportApi whose methods are mocks, so tests can both pass it and inspect calls. */
+type MockApi = { [K in keyof ImportApi]: Mock<ImportApi[K]> }
 
-function api(overrides: { insertMany?: Fn; insertOne?: Fn; update?: Fn } = {}) {
+function api(overrides: Partial<MockApi> = {}): MockApi {
   return {
-    insertMany: vi.fn().mockResolvedValue([]),
-    insertOne: vi.fn().mockResolvedValue({}),
-    update: vi.fn().mockResolvedValue({}),
+    insertMany: vi.fn<ImportApi["insertMany"]>().mockResolvedValue([]),
+    insertOne: vi.fn<ImportApi["insertOne"]>().mockResolvedValue({}),
+    update: vi.fn<ImportApi["update"]>().mockResolvedValue({}),
     ...overrides,
   }
 }

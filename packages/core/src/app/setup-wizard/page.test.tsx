@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest"
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 type Handler = (e: unknown) => void
@@ -6,7 +6,7 @@ let realtime: { handlers: Map<string, Handler>; on: (ev: string, fn: Handler) =>
 vi.mock("@/hooks/useRealtime", () => ({ getRealtimeClient: async () => realtime }))
 
 let installed: Array<{ app_name: string; has_setup_wizard?: number; is_setup_complete?: number }>
-let complete: ReturnType<typeof vi.fn>
+let complete: Mock<(...args: unknown[]) => unknown>
 const REGIONAL = {
   country_info: {
     India: { currency: "INR", timezones: ["Asia/Kolkata"] },

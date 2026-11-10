@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest"
 import { cleanup, render } from "@testing-library/react"
 import { useUnsavedChangesGuard } from "./useUnsavedChangesGuard"
 import { confirmLeave, hasUnsavedChanges } from "@/lib/nav/leave-guard"
@@ -98,7 +98,7 @@ describe("useUnsavedChangesGuard", () => {
 
   describe("browser Back/Forward", () => {
     // Stands in for the App Router's own popstate listener (non-capture, on window).
-    let routerSawPop: ReturnType<typeof vi.fn>
+    let routerSawPop: Mock<(...args: unknown[]) => unknown>
     const onRouterPop = () => routerSawPop()
 
     beforeEach(() => {

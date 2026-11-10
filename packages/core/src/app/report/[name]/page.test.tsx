@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest"
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 let reportName = "Sales Register"
@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({
 
 let reportDoc: Record<string, unknown> | null
 let script: { filters?: unknown[]; script?: string } | Error
-let run: ReturnType<typeof vi.fn>
+let run: Mock<(...args: unknown[]) => unknown>
 const client = {
   getDoc: vi.fn(async () => { if (!reportDoc) throw new Error("404"); return reportDoc }),
   callMethod: vi.fn(async (method: string, args: Record<string, unknown>) => {
