@@ -68,8 +68,8 @@ export function buildResourceUrl(
   name?: string,
   params?: Record<string, string>
 ): string {
-  const base = buildFrappeUrl(baseUrl, `${FRAPPE_API_ENDPOINTS.RESOURCE.BASE}/${doctype}`)
-  const url = name ? `${base}/${name}` : base
+  const base = buildFrappeUrl(baseUrl, `${FRAPPE_API_ENDPOINTS.RESOURCE.BASE}/${encodeURIComponent(doctype)}`)
+  const url = name ? `${base}/${encodeURIComponent(name)}` : base
 
   if (params && Object.keys(params).length > 0) {
     const query = new URLSearchParams(params).toString()

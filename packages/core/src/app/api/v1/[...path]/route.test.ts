@@ -129,3 +129,33 @@ describe("API proxy — upstream failures", () => {
     expect(text).not.toMatch(/ECONNREFUSED|10\.0\.0\.5|backend\.internal/)
   })
 })
+
+describe("API proxy — path segments (#19)", () => {
+  // Next splits the URL on "/" and then decodes each segment, so a name sent as
+  // INV%2F1 arrives here as the single segment "INV/1".
+  function decodedCtx(...segments: string[]) {
+    return { params: Promise.resolve({ path: segments }) }
+  }
+
+  it("re-encodes decoded segments so '#', '?', '%' and '/' reach Frappe intact", async () => {
+    const req = new NextRequest("http://petal.test/api/v1/doc/Sales%20Invoice/INV%231%3Fa%2520%2F2", { method: "GET" })
+
+    await GET(req, decodedCtx("doc", "Sales Invoice", "INV#1?a%20/2"))
+
+    expect(calls[0]!.url).toBe(`${BACKEND}/api/resource/Sales%20Invoice/INV%231%3Fa%2520%2F2`)
+  })
+
+  it("keeps the query string and the mapped neutral paths unchanged", async () => {
+    const req = new NextRequest("http://petal.test/api/v1/doc/Item?fields=%5B%22name%22%5D", { method: "GET" })
+    await GET(req, decodedCtx("doc", "Item"))
+    await GET(new NextRequest("http://petal.test/api/v1/records/count"), decodedCtx("records", "count"))
+
+    expect(calls[0]!.url).toBe(`${BACKEND}/api/resource/Item?fields=%5B%22name%22%5D`)
+    expect(calls[1]!.url).toBe(`${BACKEND}/api/method/frappe.client.get_count`)
+  })
+
+  it("re-encodes file names on the /files pass-through", async () => {
+    await GET(new NextRequest("http://petal.test/api/v1/files/a%20b%23c.pdf"), decodedCtx("files", "a b#c.pdf"))
+    expect(calls[0]!.url).toBe(`${BACKEND}/files/a%20b%23c.pdf`)
+  })
+})

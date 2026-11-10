@@ -1,6 +1,7 @@
 // API Playground request model: validation, code snippets and history.
 
 import type { FrappeClient } from "@/lib/frappe/client"
+import { resourcePath } from "@/lib/frappe/resource-path"
 
 export type PlaygroundRequest =
   | { kind: "method"; method: string; args: string }
@@ -138,12 +139,12 @@ export async function runPlaygroundRequest(frappe: FrappeClient, req: Playground
       const parsed = parseJsonObject(req.args)
       body = await frappe.callMethod(req.method.trim(), parsed.ok ? parsed.value : {})
     } else if (req.kind === "get_doc") {
-      frappe.invalidate(`/doc/${req.doctype}/`)
+      frappe.invalidate(`${resourcePath(req.doctype)}/`)
       body = await frappe.getDoc(req.doctype.trim(), req.name.trim())
     } else {
       const f = parseJsonArray(req.fields, "Fields")
       const flt = parseJsonArray(req.filters, "Filters")
-      frappe.invalidate(`/doc/${req.doctype}?`)
+      frappe.invalidate(`${resourcePath(req.doctype)}?`)
       body = await frappe.getList({
         doctype: req.doctype.trim(),
         fields: f.ok && f.value.length ? (f.value as string[]) : ["name"],

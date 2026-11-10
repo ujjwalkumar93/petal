@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react"
 import { AppComponent } from "@/lib/registry/lazy-component"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { usePetalStore } from "@/store/petal-store"
+import { resourcePath } from "@/lib/frappe/resource-path"
 import { useFrappe } from "@/hooks/useFrappe"
 import { DocList, QuickEntryDialog } from "@petal/ui"
 import type { DocListMeta, DocListFetchParams, DocListFilter, QuickEntryMeta, LinkFieldOption } from "@petal/ui"
@@ -70,7 +71,7 @@ export default function ListPage() {
 
   async function fetchData(params: DocListFetchParams) {
     // Lists must reflect other users' changes on refresh — skip the 30s GET cache
-    frappe.invalidate(`/doc/${doctype}?`)
+    frappe.invalidate(`${resourcePath(doctype)}?`)
     const filters = [...params.filters, ...scriptFiltersRef.current]
     const [rows, total] = await Promise.all([
       frappe.getList({

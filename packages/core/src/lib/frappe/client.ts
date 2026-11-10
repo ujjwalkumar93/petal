@@ -1,5 +1,6 @@
 import type { FrappeDocument, FrappeListParams, FrappeUser, FrappeClientConfig } from "@petal/sdk"
 import { FrappeAPI } from "@/lib/frappe/api-config"
+import { resourcePath } from "@/lib/frappe/resource-path"
 
 const DEFAULT_TTL_MS = 30_000 // 30 seconds
 
@@ -90,14 +91,18 @@ export class FrappeClient {
     this.csrfFetchPromise = null
   }
 
-  /** Remove all cache entries whose key contains `pattern`. */
+  /**
+   * Remove all cache entries whose key contains `pattern`, as written or
+   * URL-encoded (resource paths encode the doctype: "Sales%20Invoice").
+   */
   invalidate(pattern?: string): void {
     if (!pattern) {
       this.cache.clear()
       return
     }
+    const encoded = encodeURIComponent(pattern)
     for (const key of this.cache.keys()) {
-      if (key.includes(pattern)) this.cache.delete(key)
+      if (key.includes(pattern) || key.includes(encoded)) this.cache.delete(key)
     }
   }
 
@@ -293,7 +298,7 @@ export class FrappeClient {
     // Frappe returns "Guest" for unauthenticated sessions
     if (!username || username === "Guest") throw new Error("Not authenticated")
     const doc = await this.request<Record<string, unknown>>(
-      `${FrappeAPI.ENDPOINTS.RESOURCE.BASE}/User/${username}`
+      resourcePath("User", username)
     )
     return {
       name: doc.name as string,
@@ -310,8 +315,7 @@ export class FrappeClient {
   }
 
   async getDoc<T extends FrappeDocument>(doctype: string, name: string): Promise<T> {
-    const path = `${FrappeAPI.ENDPOINTS.RESOURCE.BASE}/${doctype}/${name}`
-    return this.request<T>(path)
+    return this.request<T>(resourcePath(doctype, name))
   }
 
   async getList<T extends FrappeDocument>(params: FrappeListParams): Promise<T[]> {
@@ -323,23 +327,20 @@ export class FrappeClient {
       limit_start: String(params.limit_start ?? 0),
       ...(params.order_by ? { order_by: params.order_by } : {}),
     })
-    const path = `${FrappeAPI.ENDPOINTS.RESOURCE.BASE}/${params.doctype}?${qs}`
+    const path = `${resourcePath(params.doctype)}?${qs}`
     return this.request<T[]>(path)
   }
 
   async saveDoc<T extends FrappeDocument>(doc: Partial<T> & { doctype: string }): Promise<T> {
     const isNew = !doc.name
-    const path = isNew
-      ? `${FrappeAPI.ENDPOINTS.RESOURCE.BASE}/${doc.doctype}`
-      : `${FrappeAPI.ENDPOINTS.RESOURCE.BASE}/${doc.doctype}/${doc.name}`
+    const path = isNew ? resourcePath(doc.doctype) : resourcePath(doc.doctype, doc.name as string)
     const result = await this.request<T>(path, { method: isNew ? "POST" : "PUT", body: JSON.stringify(doc) })
     this.invalidate(doc.doctype)
     return result
   }
 
   async deleteDoc(doctype: string, name: string): Promise<void> {
-    const path = `${FrappeAPI.ENDPOINTS.RESOURCE.BASE}/${doctype}/${name}`
-    await this.request<void>(path, { method: "DELETE" })
+    await this.request<void>(resourcePath(doctype, name), { method: "DELETE" })
     this.invalidate(doctype)
   }
 

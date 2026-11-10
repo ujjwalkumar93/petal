@@ -259,3 +259,37 @@ describe("FrappeClient session handling", () => {
     expect(calls.map((x) => x.url)).toEqual(["/api/v1/doc/Item/I-1", "/api/v1/auth/logout", "/api/v1/doc/Item/I-1"])
   })
 })
+
+describe("FrappeClient path encoding (#19)", () => {
+  // Real-world names: Indian invoice series, user emails, names with slashes.
+  const NAME = "INV#1?a=b%20/2024"
+  const ENCODED = "INV%231%3Fa%3Db%2520%2F2024"
+
+  it("encodes doctype and name in getDoc, saveDoc, deleteDoc and getList", async () => {
+    const c = new FrappeClient("/api/v1")
+    responses.push(json({ data: {} }), json({ data: {} }), json({ data: {} }), json({}), json({ data: [] }))
+
+    await c.getDoc("Sales Invoice", NAME)
+    await c.saveDoc({ doctype: "Sales Invoice", name: NAME })
+    await c.saveDoc({ doctype: "Sales Invoice" })
+    await c.deleteDoc("Sales Invoice", NAME)
+    await c.getList({ doctype: "Sales Invoice" })
+
+    expect(calls.map((x) => x.url.split("?")[0])).toEqual([
+      `/api/v1/doc/Sales%20Invoice/${ENCODED}`,
+      `/api/v1/doc/Sales%20Invoice/${ENCODED}`,
+      "/api/v1/doc/Sales%20Invoice",
+      `/api/v1/doc/Sales%20Invoice/${ENCODED}`,
+      "/api/v1/doc/Sales%20Invoice",
+    ])
+  })
+
+
+  it("invalidate(doctype) still clears entries whose keys are encoded", async () => {
+    const c = new FrappeClient("/api/v1")
+    responses.push(json({ data: { v: 1 } }), json({ data: { v: 2 } }))
+    await c.getDoc("Sales Invoice", "INV/1")
+    c.invalidate("Sales Invoice")
+    expect(await c.getDoc("Sales Invoice", "INV/1")).toEqual({ v: 2 })
+  })
+})
