@@ -216,7 +216,6 @@ export function GenericForm({ doctype, name, onIsSingle, toolbarSlot }: { doctyp
   const behaviorFn    = hooks.form_field_behaviors?.[doctype]
   const fieldBehaviors = useMemo(
     () => (behaviorFn ? behaviorFn(values) : {}),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [behaviorFn, values]
   )
 

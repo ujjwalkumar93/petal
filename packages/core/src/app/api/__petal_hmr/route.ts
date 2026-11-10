@@ -23,11 +23,8 @@ export async function GET(req: NextRequest) {
   }
 
   const encoder = new TextEncoder()
-  let controller: ReadableStreamDefaultController<Uint8Array>
-
   const stream = new ReadableStream<Uint8Array>({
     start(ctrl) {
-      controller = ctrl
       listeners.add(ctrl)
       // Heartbeat every 25 s to keep the connection alive through proxies
       const hb = setInterval(() => {

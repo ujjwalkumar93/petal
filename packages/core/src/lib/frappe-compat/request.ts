@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * frappe.call / frappe.xcall / frappe.db / frappe.client — ported from
  * frappe/public/js/frappe/request.js and db.js. Returns jQuery Deferreds like

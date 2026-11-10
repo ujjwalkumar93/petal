@@ -32,6 +32,16 @@ function resolveIcon(icon: string | null | undefined, fallback = "grid"): string
   return fallback
 }
 
+/** One entry of frappe.desk.desktop.get_workspace_sidebar_items → pages. */
+type WorkspacePage = {
+  name: string
+  label?: string | null
+  icon?: string | null
+  parent_page?: string | null
+  is_hidden?: 0 | 1
+  [key: string]: unknown
+}
+
 function readCache(): SidebarItem[] | null {
   try {
     const raw = sessionStorage.getItem(CACHE_KEY)
@@ -81,11 +91,11 @@ export async function fetchFrappeSidebarItems(): Promise<SidebarItem[]> {
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
 
     const data = await response.json()
-    const pages: any[] = data.message?.pages ?? []
+    const pages: WorkspacePage[] = (data as { message?: { pages?: WorkspacePage[] } }).message?.pages ?? []
 
     if (pages.length === 0) return FALLBACK_ITEMS
 
-    const visible = pages.filter((p: any) => !p.is_hidden)
+    const visible = pages.filter((p) => !p.is_hidden)
 
     const childrenMap = new Map<string, SidebarItem[]>()
     for (const page of visible) {
@@ -101,8 +111,8 @@ export async function fetchFrappeSidebarItems(): Promise<SidebarItem[]> {
     }
 
     const items: SidebarItem[] = visible
-      .filter((p: any) => !p.parent_page)
-      .map((p: any) => {
+      .filter((p) => !p.parent_page)
+      .map((p) => {
         const children = childrenMap.get(p.name)
         const item: SidebarItem = {
           label: p.label || p.name,

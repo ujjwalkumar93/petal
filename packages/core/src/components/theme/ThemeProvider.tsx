@@ -1,10 +1,10 @@
 "use client"
 import { useEffect } from "react"
 import { usePetalStore } from "@/store/petal-store"
-import { applyTheme, systemPrefersDark } from "@/lib/theme/theme-manager"
+import { applyTheme } from "@/lib/theme/theme-manager"
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { themeMode, themeName, setThemeMode } = usePetalStore()
+  const { themeMode, themeName } = usePetalStore()
 
   // Apply theme whenever mode or name changes
   useEffect(() => {

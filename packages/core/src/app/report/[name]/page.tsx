@@ -1,4 +1,5 @@
 "use client"
+import type { FrappeDocument } from "@petal/sdk"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "next/navigation"
@@ -424,7 +425,7 @@ function PlainReportPage() {
   useEffect(() => {
     setMetaLoading(true)
     Promise.all([
-      frappe.getDoc<any>("Report", name),
+      frappe.getDoc<ReportDoc & FrappeDocument>("Report", name),
       frappe.callMethod<{ filters?: FilterDef[]; script?: string }>(
         "frappe.desk.query_report.get_script",
         { report_name: name },

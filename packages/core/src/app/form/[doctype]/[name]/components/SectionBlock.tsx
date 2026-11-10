@@ -8,7 +8,6 @@ function evalDepends(expr: string | undefined, doc: Record<string, unknown>): bo
   if (!expr) return true
   try {
     const code = expr.startsWith("eval:") ? expr.slice(5) : `!!doc["${expr}"]`
-    // eslint-disable-next-line no-new-func
     return Boolean(new Function("doc", `return (${code})`)(doc))
   } catch {
     return true

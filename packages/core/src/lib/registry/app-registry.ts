@@ -44,8 +44,8 @@ export class AppRegistry {
           setTimeout(() => reject(new Error(`Timed out after 15s — is the dev server running? (${activeUrl})`)), 15_000)
         ),
       ])
-      const module = await importWithTimeout
-      hooks = module.default ?? module
+      const appModule = await importWithTimeout
+      hooks = appModule.default ?? appModule
     }
 
     await hooks.on_init?.()

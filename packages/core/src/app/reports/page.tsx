@@ -129,10 +129,10 @@ export default function ReportsPage() {
     })
     const map = new Map<string, ReportMeta[]>()
     for (const r of filtered) {
-      const module = r.module || "Other"
-      const existing = map.get(module)
+      const moduleName = r.module || "Other"
+      const existing = map.get(moduleName)
       if (existing) existing.push(r)
-      else map.set(module, [r])
+      else map.set(moduleName, [r])
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))
   }, [reports, search, typeFilter])

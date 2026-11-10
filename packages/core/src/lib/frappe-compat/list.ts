@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * The `listview` object Desk passes to `frappe.listview_settings[doctype]`
  * hooks (onload, refresh, button, formatters…), backed by Petal's list page.
@@ -53,6 +52,7 @@ export class CompatListView {
   private emit() { for (const fn of this.listeners) fn() }
 
   private makePage(): Any {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- Desk API objects: their methods use their own `this` (chaining) and also need this outer instance
     const self = this
     const el = () => g.$(typeof document !== "undefined" ? document.createElement("div") : {})
     const fields_dict: Any = {}
@@ -104,6 +104,7 @@ export class CompatListView {
   }
 
   private makeFilterArea(): Any {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- Desk API objects: their methods use their own `this` (chaining) and also need this outer instance
     const self = this
     const norm = (f: Any[]) => (f.length === 4 ? f : [self.doctype, ...f])
     return {
@@ -121,6 +122,9 @@ export class CompatListView {
       filter_list: { filters: [], get_filter: () => null },
     }
   }
+
+  /** Petal's list reports row selection here so Desk scripts see it via get_checked_items(). */
+  setCheckedNames(names: string[]) { this.checked = names }
 
   get_checked_items(only_docnames?: boolean) {
     if (only_docnames) return [...this.checked]

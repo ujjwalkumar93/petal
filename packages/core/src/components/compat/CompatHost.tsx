@@ -249,7 +249,7 @@ function DialogFieldView({ dialog, field }: { dialog: CompatDialog; field: Dialo
           meta={meta}
           value={df.data ?? []}
           disabled={readOnly}
-          {...(readOnly ? {} : { onChange: (rows: Record<string, unknown>[]) => { df.data = rows.map((r, i) => ({ idx: i + 1, name: (r.name as string) ?? `row ${i + 1}`, ...r })); dialog.refresh() } })}
+          {...(readOnly ? {} : { onChange: (rows: Record<string, unknown>[]) => { void field.set_value(rows.map((r, i) => ({ idx: i + 1, name: (r.name as string) ?? `row ${i + 1}`, ...r }))) } })}
           {...(df.cannot_add_rows ? { cannotAddRows: true } : {})}
           onLinkSearch={(dt, q) => w().frappe.call({ method: "frappe.desk.search.search_link", args: { txt: q, doctype: dt, page_length: 10 } }).then((r: any) => r?.message ?? [], () => [])}
         />

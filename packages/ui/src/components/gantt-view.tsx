@@ -24,6 +24,8 @@ export function GanttView({
   rows, startField, endField, titleField, progressField, onBarClick, dayWidth: initialDayWidth = 28, className,
 }: GanttViewProps) {
   const [dayWidth, setDayWidth] = useState(initialDayWidth)
+  // Captured once per mount: reading the clock during render would differ between renders.
+  const [now] = useState(() => Date.now())
   const { bars, range } = useMemo(
     () => buildBars(rows, startField, endField, titleField, progressField),
     [rows, startField, endField, titleField, progressField],
@@ -39,7 +41,7 @@ export function GanttView({
   }
 
   const width = range.days * dayWidth
-  const todayOffset = Math.floor((Date.now() - range.start.getTime()) / 86_400_000)
+  const todayOffset = Math.floor((now - range.start.getTime()) / 86_400_000)
 
   return (
     <div className={cn("rounded-xl border border-border bg-background overflow-hidden", className)}>

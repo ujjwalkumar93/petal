@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { cn } from "@petal/ui"
 import { useFrappe } from "@/hooks/useFrappe"
 import {
-  describeRequest, parseJsonArray, parseJsonObject, pushHistory, toClientSnippet, toCurlSnippet, validateRequest,
+  describeRequest, pushHistory, runPlaygroundRequest, toClientSnippet, toCurlSnippet, validateRequest,
 } from "@/lib/playground/playground"
 import type { HistoryEntry, PlaygroundRequest } from "@/lib/playground/playground"
 
@@ -60,34 +60,9 @@ export function ApiPlayground() {
   async function send() {
     if (validation) return
     setRunning(true)
-    const t0 = performance.now()
-    let ok = true
-    let body: unknown
-    try {
-      if (req.kind === "method") {
-        const parsed = parseJsonObject(req.args)
-        body = await frappe.callMethod(req.method.trim(), parsed.ok ? parsed.value : {})
-      } else if (req.kind === "get_doc") {
-        frappe.invalidate(`/doc/${req.doctype}/`)
-        body = await frappe.getDoc(req.doctype.trim(), req.name.trim())
-      } else {
-        const f = parseJsonArray(req.fields, "Fields")
-        const flt = parseJsonArray(req.filters, "Filters")
-        frappe.invalidate(`/doc/${req.doctype}?`)
-        body = await frappe.getList({
-          doctype: req.doctype.trim(),
-          fields: f.ok && f.value.length ? (f.value as string[]) : ["name"],
-          filters: (flt.ok ? flt.value : []) as never,
-          limit: req.limit,
-        })
-      }
-    } catch (e) {
-      ok = false
-      body = { error: e instanceof Error ? e.message : String(e) }
-    }
-    const ms = Math.round(performance.now() - t0)
+    const { ok, ms, body, at } = await runPlaygroundRequest(frappe, req)
     setResponse({ ok, ms, body: JSON.stringify(body ?? null, null, 2) })
-    const next = pushHistory(history, { ...req, at: Date.now(), ok, ms })
+    const next = pushHistory(history, { ...req, at, ok, ms })
     setHistory(next)
     saveHistory(next)
     setRunning(false)

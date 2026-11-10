@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Script and query reports with their real `frappe.query_reports[name]`
  * settings, following frappe/public/js/frappe/views/reports/query_report.js:

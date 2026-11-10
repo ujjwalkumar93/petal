@@ -70,7 +70,7 @@ export function useCompatList(doctype: string, config: FrappeCompatConfig | null
   const onRowsLoaded = useCallback((rows: Record<string, unknown>[]) => {
     if (listview && runtime.current) runtime.current.runListRefresh(listview, rows)
   }, [listview])
-  const onSelectionChange = useCallback((names: string[]) => { if (listview) listview.checked = names }, [listview])
+  const onSelectionChange = useCallback((names: string[]) => { listview?.setCheckedNames(names) }, [listview])
 
   const renderCell = useMemo(() => {
     const fmts = settings?.formatters ?? {}

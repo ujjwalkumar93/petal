@@ -323,7 +323,7 @@ export function NotificationCenter({
                 <div className="flex flex-col items-center justify-center py-14 text-center">
                   <BellIcon className="mb-3 h-9 w-9 text-muted-foreground/30" />
                   <p className="text-sm font-medium text-muted-foreground">No notifications</p>
-                  <p className="mt-1 text-xs text-muted-foreground/60">You're all caught up!</p>
+                  <p className="mt-1 text-xs text-muted-foreground/60">You&apos;re all caught up!</p>
                 </div>
               ) : (
                 <ul className="divide-y divide-border/40">

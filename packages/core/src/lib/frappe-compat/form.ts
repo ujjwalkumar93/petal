@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, no-new-func */
 /**
  * The Desk form engine — `frm`, `frappe.ui.form.on`, ScriptManager, grids,
  * fields_dict, link queries/fetch, mandatory checks and save/submit/cancel —

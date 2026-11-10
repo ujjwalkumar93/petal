@@ -224,6 +224,7 @@ export function LinkField({
           {onCreateNew && (
             <li
               role="option"
+              aria-selected={false}
               onMouseDown={(e) => { e.preventDefault(); setOpen(false); onCreateNew() }}
               className="mt-1 flex cursor-pointer items-center gap-2 border-t border-border/50 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/5"
             >

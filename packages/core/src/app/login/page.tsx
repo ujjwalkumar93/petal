@@ -1,5 +1,7 @@
 "use client"
-import { Suspense, lazy, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
+import Link from "next/link"
+import { AppComponent } from "@/lib/registry/lazy-component"
 import { useRouter } from "next/navigation"
 import { usePetalStore } from "@/store/petal-store"
 import { authService } from "@/lib/auth/auth-service"
@@ -126,7 +128,7 @@ function LoginForm() {
 
         {/* Docs link */}
         <div className="flex justify-center">
-          <a
+          <Link
             href="/petal-docs"
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors border border-border rounded-full px-3 py-1.5 bg-background/60 hover:bg-background"
           >
@@ -135,7 +137,7 @@ function LoginForm() {
               <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
             </svg>
             Documentation
-          </a>
+          </Link>
         </div>
 
         {/* Footer */}
@@ -153,18 +155,7 @@ function LoginForm() {
 export default function LoginPage() {
   // Allow custom apps to replace the entire login UI
   const loginComponent = useMemo(() => authService.getLoginComponent(), [])
-  const CustomLogin = useMemo(
-    () => (loginComponent ? lazy(loginComponent) : null),
-    [loginComponent]
-  )
-
-  if (CustomLogin) {
-    return (
-      <Suspense fallback={<LoginForm />}>
-        <CustomLogin />
-      </Suspense>
-    )
-  }
+  if (loginComponent) return <AppComponent loader={loginComponent} fallback={<LoginForm />} />
 
   return <LoginForm />
 }

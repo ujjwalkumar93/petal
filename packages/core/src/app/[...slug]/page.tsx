@@ -1,5 +1,6 @@
 "use client"
-import { Suspense, lazy, useMemo } from "react"
+import { useMemo } from "react"
+import { AppComponent } from "@/lib/registry/lazy-component"
 import { useParams } from "next/navigation"
 import { usePetalStore } from "@/store/petal-store"
 import Link from "next/link"
@@ -17,16 +18,11 @@ export default function CustomAppRoutePage() {
     [hooks.routes, path]
   )
 
-  const RouteComponent = useMemo(
-    () => (matchedRoute ? lazy(matchedRoute.component) : null),
-    [matchedRoute]
-  )
-
-  if (!RouteComponent && !hooksReady) {
+  if (!matchedRoute && !hooksReady) {
     return <PageLoader label="Loading apps…" />
   }
 
-  if (!RouteComponent) {
+  if (!matchedRoute) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
         <p className="text-5xl">🔍</p>
@@ -44,20 +40,11 @@ export default function CustomAppRoutePage() {
     )
   }
 
-  const layout = matchedRoute?.layout ?? "default"
+  const layout = matchedRoute.layout ?? "default"
+  const route = <AppComponent loader={matchedRoute.component} fallback={<PageLoader />} />
 
-  return (
-    <Suspense
-      fallback={<PageLoader />}
-    >
-      {layout === "blank" || layout === "fullscreen" ? (
-        // Escape the shell layout for blank/fullscreen routes
-        <div className={layout === "fullscreen" ? "fixed inset-0 z-50 bg-background" : ""}>
-          <RouteComponent />
-        </div>
-      ) : (
-        <RouteComponent />
-      )}
-    </Suspense>
-  )
+  // blank/fullscreen routes escape the shell layout
+  return layout === "blank" || layout === "fullscreen" ? (
+    <div className={layout === "fullscreen" ? "fixed inset-0 z-50 bg-background" : ""}>{route}</div>
+  ) : route
 }

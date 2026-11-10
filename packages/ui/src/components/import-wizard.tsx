@@ -150,7 +150,7 @@ export function ImportWizard({ doctype, fields, onImport, onDone, className }: I
                           onChange={(e) => setMapping((m) => m.map((v, i) => (i === c ? e.target.value : v === e.target.value && e.target.value ? "" : v)))}
                           className="h-8 w-full min-w-[160px] rounded border border-border bg-background px-2 text-sm"
                         >
-                          <option value="">— Don't import —</option>
+                          <option value="">— Don&apos;t import —</option>
                           <option value="name">ID (name)</option>
                           {targets.map((f) => (
                             <option key={f.fieldname} value={f.fieldname}>{f.label || f.fieldname}{f.reqd ? " *" : ""}</option>

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * frappe.msgprint / throw / confirm / prompt / show_alert / ui.Dialog /
  * ui.FieldGroup / ui.form.MultiSelectDialog — the logic half. Entries are
@@ -94,6 +93,7 @@ export class DialogField {
     this.value = defaultFor(df)
     if (df.fieldtype === "Table") {
       if (!Array.isArray(df.data)) df.data = Array.isArray(this.value) ? this.value : []
+      // eslint-disable-next-line @typescript-eslint/no-this-alias -- Desk API objects: their methods use their own `this` (chaining) and also need this outer instance
       const field = this
       this.grid = {
         df,
@@ -595,6 +595,7 @@ export class MultiSelectPicker {
     Object.assign(this, opts)
     this.setters = this.setters ?? {}
     this.entryId = nextId++
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- Desk API objects: their methods use their own `this` (chaining) and also need this outer instance
     const self = this
     this.dialog = {
       hide() { uiStore.remove(self.entryId) },
